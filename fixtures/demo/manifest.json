@@ -1,0 +1,6 @@
+{
+  "synthetic": true,
+  "base_tickets": 40,
+  "clock": "2026-11-06T12:00:00+00:00",
+  "warning": "Controlled provider responses, not measured model quality."
+}

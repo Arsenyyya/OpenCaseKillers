@@ -1,0 +1,343 @@
+{
+  "6612adaf46e6e59413da0abc811037953f168d70833405dc16fd3e847f817296": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу выгружать список заказов в CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "5a20ba50f015ee1556c548a0568655fd6305d84849cc989acca67bf55419d6e8": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужен экспорт заказов в таблицу CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "e615b6f1f2dac71e9713e28c7cb109b046ea304232d843c715cc29d16edf4648": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Добавьте CSV для перечня заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "8c5f34ee510059e30555fda29408a3fcb3e9c482742cdf6e4694b4a8daa6e45c": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "eabe6a2a43dcf411137e6aaf0409e1cbcd9709073c78ca8cc380997b063bcb3b": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Список заказов нужен файлом CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "9302579f549c7f2fec5d53f985c080f81bedb6ce8acce00e219f635fe2085479": {
+    "items": [
+      {
+        "kind": "defect",
+        "urgency": "normal",
+        "need": "Исправить ошибку существующей выгрузки CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Ранее работавшая выгрузка CSV теперь падает с ошибкой 500"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "b1c77576d6841f2657efcb8fed3318b2c36346d608e33b6179ce617edd862ea3": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить уведомления о смене статуса заказа",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужны оповещения о смене статуса заказа"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "d167f9a627103c2999bb336a541c6315d3d8fe13b154d1ae7ae695c3b35bf313": {
+    "items": [
+      {
+        "kind": "service_request",
+        "urgency": "normal",
+        "need": "Выдать доступ к отчётам",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Выдайте мне доступ к отчётам"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "40a0123964965d07cd8279ab0ad309825201b04268b738550e1f6e1631d79632": {
+    "items": [
+      {
+        "kind": "incident",
+        "urgency": "critical",
+        "need": "Восстановить доступность сервиса",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Полностью недоступен сервис, работа остановлена"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "85ad61bd1bb981226e35e15689037ed98e7f1bdcadcf27be6b81f62fd5fd6911": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужен CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      },
+      {
+        "kind": "defect",
+        "urgency": "normal",
+        "need": "Исправить ошибку существующей выгрузки CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Старый экспорт падает с ошибкой 500"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "011364007c6d0fa4d551f6e69b407607ea27301746a3897a9ddc23d63b227afb": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить тёмную тему интерфейса",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу тёмную тему интерфейса"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "be3d7a0614032896f82cdd8c695a891462976eb937363e0a90cf02a148182262": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить поиск по номеру заявки",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Добавьте поиск заявки по её номеру"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "ccacf32cabb38cf3081cf4cfa30e7f507dba3df78fba552f156810d3f8368e79": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "8bab2f5a95ebccfdbf078d1cabbe09875ecd7b755f3bd23d641e675c6e807252": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "injection-1-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "e6814d874972fe4ac8929c15a790c117f3b18ee17129a808b1c09ef0188175fc": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "call-1-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "a742138e773cb09fb0874b83d492c2e79e3c299a98acd01bac11e9344b15be72": {
+    "items": [
+      {
+        "kind": "unclear",
+        "urgency": "unknown",
+        "need": "Уточнить просьбу о CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "poor-1-1",
+            "quote": "Хочу CSV"
+          }
+        ],
+        "needs_review": true,
+        "review_reason": "Низкое качество или неоднозначность"
+      }
+    ]
+  },
+  "70b41b336f11f10351f2267c6cc572aaa3850bc8f57717daadc695e1c71d49a2": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "doc-1",
+            "quote": "Please add CSV export for the order list."
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "ab1ff3cd5a015bb8d743647073f2f846b23d737ecb5ac462aa32b3f19f3d82e7": {
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "mixed-1",
+            "quote": "Please add CSV export for the order list."
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  "bb9d8d02b4364158d6eb49f290a1007b606f67579d52b6cf14de4bc7984e93be": {
+    "items": []
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "date": "2026-11-06",
+  "timezone": "Europe/Moscow",
+  "scope": "local synthetic MVP, not production validation",
+  "pytest": {
+    "passed": 42,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 101.24,
+    "warnings": 1
+  },
+  "e2e_regression": {
+    "passed": 7,
+    "duration_seconds": 41.57
+  },
+  "ruff": "passed",
+  "uv_lock_check": "passed",
+  "host_walkthrough": {
+    "status": "passed",
+    "synthetic": true,
+    "initial": {
+      "tickets": 40,
+      "memberships": 37,
+      "cards": 6,
+      "receipts": 2
+    },
+    "restart_and_repeat_unchanged": true,
+    "atlas_csv_origins_after_update_delete": 10,
+    "deleted_content_purged": true,
+    "model_quality": "not_run"
+  },
+  "linux_walkthrough": {
+    "status": "passed",
+    "synthetic": true,
+    "initial": {
+      "tickets": 40,
+      "memberships": 37,
+      "cards": 6,
+      "receipts": 2
+    },
+    "restart_and_repeat_unchanged": true,
+    "atlas_csv_origins_after_update_delete": 10,
+    "deleted_content_purged": true,
+    "model_quality": "not_run"
+  },
+  "api_smoke": {
+    "ready": true,
+    "atlas_cards": 3,
+    "cross_product_denied": true,
+    "anonymous_metrics_denied": true
+  },
+  "queue_load": {
+    "synthetic": true,
+    "scope": "PostgreSQL queue, fairness, retry and shared slots; no Qwen or end-to-end media benchmark",
+    "tickets": 3000,
+    "workers": 4,
+    "provider_limit": 2,
+    "peak_provider_calls": 2,
+    "elapsed_seconds": 37.977,
+    "status_counts": {
+      "succeeded": 3000
+    },
+    "worker_results": [
+      {
+        "completed": 736,
+        "capacity_waits": 754,
+        "transient_failures": 1
+      },
+      {
+        "completed": 757,
+        "capacity_waits": 738,
+        "transient_failures": 1
+      },
+      {
+        "completed": 750,
+        "capacity_waits": 756,
+        "transient_failures": 1
+      },
+      {
+        "completed": 757,
+        "capacity_waits": 749,
+        "transient_failures": 1
+      }
+    ],
+    "all_completed": true,
+    "illustrative_profile": {
+      "tickets_per_day": 1000,
+      "threefold": 3000,
+      "audio_share": 0.2,
+      "minutes_per_call": 5,
+      "image_pages_per_day": 100
+    },
+    "media_profile_executed": false,
+    "real_24h_freshness_slo": "not_run"
+  },
+  "not_run": [
+    "real Qwen/ASR/VL quality",
+    "corporate endpoints and identity integration",
+    "independent labeled evaluation",
+    "real media/GPU load and 24-hour freshness SLO",
+    "corporate backup/restore and security review"
+  ],
+  "source_pdf": "iCloud read timed out; technical brief and DOCX were available"
+}

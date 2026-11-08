@@ -1,0 +1,116 @@
+{
+  "$defs": {
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "segment_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "quote": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "quote"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Item": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "feature_request",
+            "defect",
+            "service_request",
+            "incident",
+            "unclear"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "urgency": {
+          "enum": [
+            "critical",
+            "high",
+            "normal",
+            "unknown"
+          ],
+          "title": "Urgency",
+          "type": "string"
+        },
+        "need": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Need",
+          "type": "string"
+        },
+        "context": {
+          "maxLength": 500,
+          "title": "Context",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "needs_review": {
+          "title": "Needs Review",
+          "type": "boolean"
+        },
+        "review_reason": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Review Reason"
+        }
+      },
+      "required": [
+        "kind",
+        "urgency",
+        "need",
+        "context",
+        "evidence",
+        "needs_review",
+        "review_reason"
+      ],
+      "title": "Item",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/Item"
+      },
+      "maxItems": 20,
+      "title": "Items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "title": "Extraction",
+  "type": "object"
+}

@@ -1,0 +1,118 @@
+{
+  "$defs": {
+    "Attachment": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[\\w-]{1,64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "content_ref": {
+          "pattern": "^[\\w./-]{1,200}$",
+          "title": "Content Ref",
+          "type": "string"
+        },
+        "declared_type": {
+          "maxLength": 100,
+          "title": "Declared Type",
+          "type": "string"
+        },
+        "transcript": {
+          "anyOf": [
+            {
+              "maxLength": 50000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Transcript"
+        },
+        "transcript_quality": {
+          "default": "unknown",
+          "enum": [
+            "usable",
+            "poor",
+            "unknown"
+          ],
+          "title": "Transcript Quality",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "content_ref",
+        "declared_type"
+      ],
+      "title": "Attachment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "external_id": {
+      "pattern": "^[\\w-]{1,100}$",
+      "title": "External Id",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
+    },
+    "text": {
+      "maxLength": 200000,
+      "title": "Text",
+      "type": "string"
+    },
+    "channel": {
+      "enum": [
+        "text",
+        "audio",
+        "document",
+        "image"
+      ],
+      "title": "Channel",
+      "type": "string"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "attachments": {
+      "items": {
+        "$ref": "#/$defs/Attachment"
+      },
+      "maxItems": 32,
+      "title": "Attachments",
+      "type": "array"
+    },
+    "duplicate_of": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Duplicate Of"
+    }
+  },
+  "required": [
+    "external_id",
+    "version",
+    "text",
+    "channel",
+    "occurred_at"
+  ],
+  "title": "TicketContent",
+  "type": "object"
+}

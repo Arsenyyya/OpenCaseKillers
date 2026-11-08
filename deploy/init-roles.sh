@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+  -v worker_password="$WORKER_PASSWORD" -v api_password="$API_PASSWORD" <<'SQL'
+CREATE ROLE agent_worker LOGIN PASSWORD :'worker_password' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+CREATE ROLE agent_api LOGIN PASSWORD :'api_password' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+SQL

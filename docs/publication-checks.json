@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-08",
+  "timezone": "Europe/Moscow",
+  "pytest": {
+    "passed": 42,
+    "failed": 0,
+    "duration_seconds": 97.2,
+    "warnings": 1,
+    "scope": "Full suite on real disposable PostgreSQL databases; synthetic providers"
+  },
+  "ruff": "passed",
+  "uv_lock": "passed",
+  "pdf": {
+    "path": "docs/OpenCaseKillers_Report_RU.pdf",
+    "source": "docs/report_ru.md",
+    "pages": 13,
+    "cyrillic_fonts": "embedded DejaVu Sans",
+    "visual_review": "passed"
+  },
+  "baseline_measurements_date": "2026-11-06",
+  "not_run": [
+    "real Qwen/ASR/VL evaluation",
+    "corporate endpoints and issuer",
+    "real GPU/media load and 24h SLO"
+  ],
+  "publication_audit": {
+    "credentials_in_candidates": false,
+    "private_paths_excluded": true,
+    "note": "Synthetic demo-secret strings and the deliberately broken PDF are intentional fixtures"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "segment_id": {
+      "title": "Segment Id",
+      "type": "string"
+    },
+    "source_ref": {
+      "title": "Source Ref",
+      "type": "string"
+    },
+    "media_type": {
+      "title": "Media Type",
+      "type": "string"
+    },
+    "page": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Page"
+    },
+    "start_ms": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Start Ms"
+    },
+    "end_ms": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "End Ms"
+    },
+    "text": {
+      "maxLength": 200000,
+      "title": "Text",
+      "type": "string"
+    },
+    "quality": {
+      "default": "unknown",
+      "enum": [
+        "usable",
+        "poor",
+        "unknown"
+      ],
+      "title": "Quality",
+      "type": "string"
+    },
+    "confidence": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confidence"
+    },
+    "processor_version": {
+      "title": "Processor Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "segment_id",
+    "source_ref",
+    "media_type",
+    "text",
+    "processor_version"
+  ],
+  "title": "Segment",
+  "type": "object"
+}

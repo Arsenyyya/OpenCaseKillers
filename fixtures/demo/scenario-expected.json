@@ -1,0 +1,939 @@
+[
+  {
+    "product_id": "atlas",
+    "external_id": "t01",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу выгружать список заказов в CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t02",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужен экспорт заказов в таблицу CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t03",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Добавьте CSV для перечня заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t04",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t05",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Список заказов нужен файлом CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t06",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу выгружать список заказов в CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t07",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу выгружать список заказов в CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t08",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "defect",
+        "urgency": "normal",
+        "need": "Исправить ошибку существующей выгрузки CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Ранее работавшая выгрузка CSV теперь падает с ошибкой 500"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t09",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "defect",
+        "urgency": "normal",
+        "need": "Исправить ошибку существующей выгрузки CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Ранее работавшая выгрузка CSV теперь падает с ошибкой 500"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t10",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить уведомления о смене статуса заказа",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужны оповещения о смене статуса заказа"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t11",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить уведомления о смене статуса заказа",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужны оповещения о смене статуса заказа"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t12",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "service_request",
+        "urgency": "normal",
+        "need": "Выдать доступ к отчётам",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Выдайте мне доступ к отчётам"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t13",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "incident",
+        "urgency": "critical",
+        "need": "Восстановить доступность сервиса",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Полностью недоступен сервис, работа остановлена"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t14",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужен CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      },
+      {
+        "kind": "defect",
+        "urgency": "normal",
+        "need": "Исправить ошибку существующей выгрузки CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Старый экспорт падает с ошибкой 500"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t15",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить тёмную тему интерфейса",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу тёмную тему интерфейса"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t16",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить поиск по номеру заявки",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Добавьте поиск заявки по её номеру"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t17",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t18",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "injection-1-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t19",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "call-1-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t20",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "unclear",
+        "urgency": "unknown",
+        "need": "Уточнить просьбу о CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "poor-1-1",
+            "quote": "Хочу CSV"
+          }
+        ],
+        "needs_review": true,
+        "review_reason": "Низкое качество или неоднозначность"
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t21",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "doc-1",
+            "quote": "Please add CSV export for the order list."
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t22",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "mixed-1",
+            "quote": "Please add CSV export for the order list."
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t23",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t24",
+    "version": "v1",
+    "synthetic": true,
+    "items": []
+  },
+  {
+    "product_id": "atlas",
+    "external_id": "t02",
+    "version": "opaque-new",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить поиск по номеру заявки",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Добавьте поиск заявки по её номеру"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t01",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу выгружать список заказов в CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t02",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужен экспорт заказов в таблицу CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t03",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Добавьте CSV для перечня заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t04",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t05",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Список заказов нужен файлом CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t06",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу выгружать список заказов в CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t07",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу выгружать список заказов в CSV"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t08",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "defect",
+        "urgency": "normal",
+        "need": "Исправить ошибку существующей выгрузки CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Ранее работавшая выгрузка CSV теперь падает с ошибкой 500"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t09",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "defect",
+        "urgency": "normal",
+        "need": "Исправить ошибку существующей выгрузки CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Ранее работавшая выгрузка CSV теперь падает с ошибкой 500"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t10",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить уведомления о смене статуса заказа",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужны оповещения о смене статуса заказа"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t11",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить уведомления о смене статуса заказа",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужны оповещения о смене статуса заказа"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t12",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "service_request",
+        "urgency": "normal",
+        "need": "Выдать доступ к отчётам",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Выдайте мне доступ к отчётам"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t13",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "incident",
+        "urgency": "critical",
+        "need": "Восстановить доступность сервиса",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Полностью недоступен сервис, работа остановлена"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t14",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить выгрузку списка заказов в CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Нужен CSV для списка заказов"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      },
+      {
+        "kind": "defect",
+        "urgency": "normal",
+        "need": "Исправить ошибку существующей выгрузки CSV",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Старый экспорт падает с ошибкой 500"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t15",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить тёмную тему интерфейса",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Хочу тёмную тему интерфейса"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t16",
+    "version": "v1",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить поиск по номеру заявки",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Добавьте поиск заявки по её номеру"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  },
+  {
+    "product_id": "boreal",
+    "external_id": "t02",
+    "version": "opaque-new",
+    "synthetic": true,
+    "items": [
+      {
+        "kind": "feature_request",
+        "urgency": "normal",
+        "need": "Добавить поиск по номеру заявки",
+        "context": "Синтетический пример поддержки",
+        "evidence": [
+          {
+            "segment_id": "body-1",
+            "quote": "Добавьте поиск заявки по её номеру"
+          }
+        ],
+        "needs_review": false,
+        "review_reason": null
+      }
+    ]
+  }
+]

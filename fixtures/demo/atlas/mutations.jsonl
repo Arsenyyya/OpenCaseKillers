@@ -1,0 +1,2 @@
+{"sequence": 25, "external_id": "t02", "version": "opaque-new", "operation": "upsert", "changed_at": "2026-11-06T12:00:00+00:00", "backfill": false}
+{"sequence": 26, "external_id": "t03", "version": "deleted", "operation": "delete", "changed_at": "2026-11-06T12:00:00+00:00", "backfill": false}

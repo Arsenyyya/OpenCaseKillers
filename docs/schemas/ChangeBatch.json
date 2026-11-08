@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "Change": {
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "external_id": {
+          "pattern": "^[\\w-]{1,100}$",
+          "title": "External Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "upsert",
+            "delete",
+            "access_revoked"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "changed_at": {
+          "format": "date-time",
+          "title": "Changed At",
+          "type": "string"
+        },
+        "backfill": {
+          "default": false,
+          "title": "Backfill",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sequence",
+        "external_id",
+        "version",
+        "operation",
+        "changed_at"
+      ],
+      "title": "Change",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "changes": {
+      "items": {
+        "$ref": "#/$defs/Change"
+      },
+      "maxItems": 200,
+      "title": "Changes",
+      "type": "array"
+    },
+    "next_cursor": {
+      "title": "Next Cursor",
+      "type": "string"
+    },
+    "has_more": {
+      "title": "Has More",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "changes",
+    "next_cursor",
+    "has_more"
+  ],
+  "title": "ChangeBatch",
+  "type": "object"
+}

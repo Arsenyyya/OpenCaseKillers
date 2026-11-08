@@ -1,0 +1,71 @@
+{
+  "$defs": {
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "segment_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "quote": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "quote"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "enum": [
+        "match",
+        "new",
+        "uncertain"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "candidate_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Candidate Id"
+    },
+    "reason": {
+      "maxLength": 300,
+      "title": "Reason",
+      "type": "string"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/Evidence"
+      },
+      "maxItems": 3,
+      "title": "Evidence",
+      "type": "array"
+    }
+  },
+  "required": [
+    "action",
+    "candidate_id",
+    "reason",
+    "evidence"
+  ],
+  "title": "Match",
+  "type": "object"
+}
