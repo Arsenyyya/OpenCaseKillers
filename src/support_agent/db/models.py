@@ -10,6 +10,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
     Float,
+    CheckConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
@@ -41,6 +42,7 @@ class Product(Base):
     id: Mapped[str] = mapped_column(String(60), primary_key=True)
     owner: Mapped[str] = mapped_column(String(100))
     terms: Mapped[dict] = mapped_column(JSONB, default=dict)
+    __table_args__ = (CheckConstraint("id ~ '^[A-Za-z0-9_-]{1,60}$'", name="product_safe_id"),)
 
 
 class Principal(Base):
@@ -58,6 +60,7 @@ class Grant(Scoped, Base):
         product_fk(),
         ForeignKeyConstraint(["actor"], ["principals.id"]),
         UniqueConstraint("product_id", "actor", "role"),
+        CheckConstraint("role IN ('viewer','product_reviewer','operator')", name="grant_known_role"),
     )
 
 
@@ -97,6 +100,7 @@ class Revision(Scoped, Base):
     content_hash: Mapped[str] = mapped_column(String(64))
     raw: Mapped[dict | None] = mapped_column(JSONB)
     segments: Mapped[list | None] = mapped_column(JSONB)
+    extracted_items: Mapped[list | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(30), default="accepted")
     coverage: Mapped[dict] = mapped_column(JSONB, default=dict)
     normalization_version: Mapped[str] = mapped_column(String(40), default="norm-v1")
@@ -108,7 +112,12 @@ class Revision(Scoped, Base):
     usage: Mapped[dict] = mapped_column(JSONB, default=dict)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    __table_args__ = (fk("tickets", "ticket_id"), UniqueConstraint("product_id", "ticket_id", "number"))
+    __table_args__ = (
+        fk("tickets", "ticket_id"),
+        UniqueConstraint("product_id", "ticket_id", "number"),
+        UniqueConstraint("product_id", "id", "ticket_id", name="revision_ticket_identity"),
+        Index("revision_retention", "product_id", "created_at"),
+    )
 
 
 class MediaCache(Scoped, Base):
@@ -188,12 +197,20 @@ class Need(Scoped, Base):
     urgency: Mapped[str] = mapped_column(String(30))
     evidence: Mapped[list] = mapped_column(JSONB)
     eligible: Mapped[bool] = mapped_column(Boolean)
+    needs_review: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    review_reason: Mapped[str | None] = mapped_column(String(300))
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     __table_args__ = (
         fk("revisions", "revision_id"),
         fk("groups", "group_id"),
         fk("tickets", "ticket_id"),
         UniqueConstraint("product_id", "revision_id", "group_id"),
+        ForeignKeyConstraint(
+            ["product_id", "revision_id", "ticket_id"],
+            ["revisions.product_id", "revisions.id", "revisions.ticket_id"],
+            name="need_revision_ticket",
+        ),
+        Index("need_ticket_groups", "product_id", "ticket_id", "group_id"),
     )
 
 
@@ -252,6 +269,9 @@ class Outbox(Scoped, Base):
     status: Mapped[str] = mapped_column(String(40), default="pending")
     external_id: Mapped[str | None] = mapped_column(String(100))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolution_reason: Mapped[str | None] = mapped_column(String(500))
+    resolved_by: Mapped[str | None] = mapped_column(String(100))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (fk("cards", "card_id"), fk("decisions", "decision_id"))
 
 
@@ -287,3 +307,15 @@ class Observation(Scoped, Base):
     need_hash: Mapped[str] = mapped_column(String(64))
     first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     __table_args__ = (fk("tickets", "ticket_id"), UniqueConstraint("product_id", "ticket_id", "need_hash"))
+
+
+class GroupObservation(Scoped, Base):
+    __tablename__ = "group_observations"
+    ticket_id: Mapped[str] = mapped_column(String(180))
+    group_id: Mapped[str] = mapped_column(String(180))
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        fk("tickets", "ticket_id"),
+        fk("groups", "group_id"),
+        UniqueConstraint("product_id", "ticket_id", "group_id"),
+    )

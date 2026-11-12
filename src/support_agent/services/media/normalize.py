@@ -1,3 +1,5 @@
+import math
+
 from support_agent.contracts import Segment
 from support_agent.errors import Permanent
 from support_agent.policy import mask
@@ -48,9 +50,15 @@ async def normalize_attachment(data, attachment, product, settings, recognize):
                 )
             else:
                 rows = await recognize(data, "pdf_page", i)
-                result.extend(media_segments(rows, sid, ref, "pdf_scan", product, page=i))
+                result.extend(
+                    media_segments(rows, sid, ref, "pdf_scan", product, page=i, limit=settings.max_segments)
+                )
     elif kind == "image":
-        result.extend(media_segments(await recognize(data, "image", None), sid, ref, "image", product))
+        result.extend(
+            media_segments(
+                await recognize(data, "image", None), sid, ref, "image", product, limit=settings.max_segments
+            )
+        )
     elif kind == "audio":
         duration = parsed[0]["duration"]
         if attachment.transcript and attachment.transcript_quality == "usable":
@@ -75,6 +83,7 @@ async def normalize_attachment(data, attachment, product, settings, recognize):
                     "audio",
                     product,
                     duration_ms=int(duration * 1000),
+                    limit=settings.max_segments,
                 )
             )
     if not result or len(result) > settings.max_segments:
@@ -82,10 +91,17 @@ async def normalize_attachment(data, attachment, product, settings, recognize):
     return result
 
 
-def media_segments(rows, sid, ref, kind, product, page=None, duration_ms=None):
+def media_segments(rows, sid, ref, kind, product, page=None, duration_ms=None, limit=80):
+    if not isinstance(rows, list) or not rows or len(rows) > limit:
+        raise Permanent()
     result = []
     for i, row in enumerate(rows, 1):
         if not isinstance(row, dict) or set(row) - {"text", "quality", "confidence", "start_ms", "end_ms"}:
+            raise Permanent()
+        confidence = row.get("confidence")
+        if confidence is not None and (
+            type(confidence) not in (int, float) or not math.isfinite(confidence) or not 0 <= confidence <= 1
+        ):
             raise Permanent()
         seg = text_segment(
             f"{sid}-{page or 1}-{i}",

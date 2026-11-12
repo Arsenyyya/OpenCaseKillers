@@ -13,6 +13,8 @@ from support_agent.settings import ROOT
 def isolated_database(settings, prefix="agent_test_"):
     if settings.app_env != "local" or settings.mode != "demo" or prefix not in ("agent_test_", "agent_load_"):
         raise RuntimeError("Disposable databases are restricted to local demo verification")
+    if not settings.database_admin_url:
+        raise RuntimeError("Disposable database checks require explicit DATABASE_ADMIN_URL")
     name = prefix + uuid4().hex[:12]
     admin_url = make_url(settings.database_admin_url)
     admin = create_engine(admin_url.set(database="postgres"), isolation_level="AUTOCOMMIT")

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "id": "pilot-product",
+      "owner": "replace-with-verified-issuer-subject",
+      "sources": ["gateway"],
+      "terms": {"CSV": "Выгрузка списка заказов в табличный файл"},
+      "known_tasks": []
+    }
+  ],
+  "principals": [
+    {
+      "id": "replace-with-verified-issuer-subject",
+      "enabled": true,
+      "bindings": [{"product_id": "pilot-product", "roles": ["viewer", "product_reviewer"]}]
+    },
+    {
+      "id": "replace-with-operator-subject",
+      "enabled": true,
+      "bindings": [{"product_id": "pilot-product", "roles": ["operator"]}]
+    }
+  ],
+  "provider_slots": {"llm": 2, "asr": 1, "vl": 1}
+}

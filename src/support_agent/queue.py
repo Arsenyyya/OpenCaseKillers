@@ -6,7 +6,7 @@ from uuid import uuid4
 from sqlalchemy import select, or_, and_
 from sqlalchemy.dialects.postgresql import insert
 from support_agent.db.models import Job, ProductLease, ProviderSlot, Revision, Ticket, Audit
-from support_agent.errors import Stale, Capacity, Permanent
+from support_agent.errors import Stale, Capacity, Permanent, Budget, InvalidOutput
 
 
 @dataclass(frozen=True)
@@ -76,7 +76,7 @@ class Queue:
                 j.attempts += 1
                 j.heartbeat, j.lease_until = now, now + timedelta(seconds=self.settings.lease_seconds)
                 self.turn = (idx + 1) % len(products)
-                return Claim(p, j.id, j.claim_token, j.revision_id, kind)
+                return Claim(p, j.id, j.claim_token, j.revision_id, j.kind)
         return None
 
     def guard(self, s, c):
@@ -129,7 +129,16 @@ class Queue:
             j.available_at = self.clock.now() + timedelta(seconds=wait)
             if terminal and j.revision_id:
                 r = s.get(Revision, (c.product_id, j.revision_id))
-                r.status = "dead"
+                r.status = (
+                    "partial"
+                    if isinstance(exc, Budget)
+                    else ("needs_review" if isinstance(exc, InvalidOutput) else "dead")
+                )
+                if isinstance(exc, (Budget, InvalidOutput)):
+                    coverage = dict(r.coverage or {})
+                    coverage["complete"] = False
+                    coverage["failures"] = list(dict.fromkeys([*coverage.get("failures", []), j.error_code]))
+                    r.coverage = coverage
             s.add(
                 Audit(
                     product_id=c.product_id,
@@ -143,6 +152,7 @@ class Queue:
     def complete(self, s, c, next_kind=None):
         j = self.guard(s, c)
         j.status, j.claim_token, j.lease_until = "succeeded", None, None
+        j.error_code = None
         if next_kind:
             enqueue(
                 s,
@@ -184,7 +194,11 @@ class Queue:
 
     def release_product(self, product, token):
         with self.db.tx([product]) as s:
-            lease = s.get(ProductLease, (product, "assignment"))
+            lease = s.scalar(
+                select(ProductLease)
+                .where(ProductLease.product_id == product, ProductLease.id == "assignment")
+                .with_for_update()
+            )
             if lease and lease.token == token:
                 lease.token, lease.until = None, None
 

@@ -1,133 +1,87 @@
 # OpenCaseKillers
 
-**[Технический отчёт в PDF: архитектура, технологии и запуск](docs/OpenCaseKillers_Report_RU.pdf)** · [Исходник отчёта](docs/report_ru.md)
+[![Verify project](https://github.com/Arsenyyya/OpenCaseKillers/actions/workflows/verify.yml/badge.svg)](https://github.com/Arsenyyya/OpenCaseKillers/actions/workflows/verify.yml)
 
-Backend-пакет проекта — `support-insight-agent`, команда запуска — `support-agent`.
+Аналитический backend для продуктовых команд: **обращения поддержки → проверяемые потребности → повторяющиеся группы → согласованные карточки → backlog**.
 
-Работающий MVP по приложенному техническому заданию: обращения поддержки → нормализация текста/вложений → отдельные потребности → повторяющиеся группы одного продукта → карточки с точными числами и evidence → решение владельца → transactional outbox.
+Модель интерпретирует содержание. Код проверяет источники, права, версии, частоты и допустимость записи. Пожелания, дефекты, сервисные запросы и инциденты разделяются; продуктовый reviewer принимает окончательное решение.
 
-Python 3.12+, FastAPI, Pydantic, SQLAlchemy, Alembic, PostgreSQL 17, httpx. Четыре границы сервисов, одна кодовая база. Сложный frontend не требуется: есть CLI, API и OpenAPI.
+**Версия 0.2.0 · 86 тестов прошли.** Локальный контур работает без внешней сети во время обработки. Demo использует явно синтетические данные и конечный набор ответов провайдеров. Качество реальных Qwen и готовность интеграции с компанией не заявляются.
 
-**Demo полностью синтетический.** Он не вызывает реальные Qwen/ASR/VL и не доказывает качество моделей. Internal подключается только через явно настроенный шлюз, без внешних LLM/API и скрытого fallback. Доставка по умолчанию `shadow`; `reviewed` требует решения уполномоченного reviewer по конкретной revision/hash.
+[PDF-отчёт](docs/OpenCaseKillers_Report_RU.pdf) · [Документация](docs/README.md) · [Состояние требований](docs/readiness.md) · [Результаты проверок](docs/validation.md)
 
-## Быстрый локальный запуск
+## Быстрый старт
 
-Нужны Python 3.12+ и работающий Docker Desktop/Engine с Compose. Команды выполнять из корня проекта. Зависимости и Docker-образы скачиваются при установке; обработка demo затем не требует внешней сети.
-
-```sh
-python3 -m venv .venv
-.venv/bin/python -m pip install uv==0.13.7
-.venv/bin/uv sync --frozen --extra dev --cache-dir .cache/uv
-python3 scripts/bootstrap.py
-docker compose up -d --wait db
-.venv/bin/support-agent migrate
-DELIVERY_MODE=reviewed .venv/bin/support-agent run-demo
-```
-
-На чистой БД: **40 тикетов, 37 участий origin в группах, 6 карточек, 2 локальные доставки**, `repeat_unchanged: true`. В Atlas группа пожеланий CSV имеет 12 независимых origin, дефект экспорта — отдельную группу. Явный дубль считается один раз, независимые одинаковые тексты — отдельно. Плохой ASR и битый PDF видны как needs_review/partial и не добавляют частоту автоматической подборке. В demo-командах часы фиксированы на 6 ноября 2026, 12:00 UTC; обычные процессы используют реальные UTC-часы и бизнес-зону Europe/Moscow.
-
-Повтор команды не создаёт дополнительных карточек/доставок. Отдельный чистый walkthrough проверяет ещё и рестарт, изменение/удаление: CSV origin в Atlas становится 10, удалённый текст/evidence очищается.
+Нужны Python 3.12+, Docker с Compose и `make`. Из корня проекта:
 
 ```sh
-.venv/bin/python scripts/verify_demo.py
-.venv/bin/python scripts/start_api.py
+make demo
+make doctor
+make api
 ```
 
-API: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs). Для API скрипт выбирает отдельную non-owner роль `agent_api`, workers используют `agent_worker`. В другом терминале:
+`make demo` устанавливает зафиксированные зависимости, создаёт локальные credentials, поднимает PostgreSQL, применяет миграции и запускает reviewed demo. `make api` запускает API под отдельной ограниченной ролью БД.
+
+**На чистой БД:** 40 синтетических тикетов → 37 участий origin в группах → 6 карточек → 2 локальные доставки; повтор не создаёт дублей. Отдельная проверка рестарта, изменений и удаления:
 
 ```sh
-.venv/bin/python scripts/api_probe.py
+make verify
 ```
 
-Токены local bootstrap находятся только в `.local/tokens.json`, хеши — в серверном реестре. `viewer` видит Atlas; `reviewer` принимает решения только по Atlas; `operator` управляет заданиями обоих продуктов без права reviewer; `boreal` согласует Boreal. Не отправляйте `.env` и `.local` вместе с проектом.
+OpenAPI: **http://127.0.0.1:8000/docs**. В другом терминале можно выполнить `.venv/bin/python scripts/api_probe.py`. Если порт уже занят Docker API, используйте существующий процесс либо `scripts/start_api.py --port 8001`.
 
-## Полный Docker Compose
+Демо-данные зафиксированы на 6 ноября 2026 для воспроизводимости. Постоянные процессы используют текущие UTC-часы; бизнес-календарь — Europe/Moscow. [Подробный запуск без make и работа с токенами](docs/quickstart.md).
 
-`build-image.sh` обходит ошибку некоторых Docker Desktop с кириллицей в пути: собирает тот же source через временный ASCII-каталог, исключая secrets/cache. Один образ используют все сервисы.
+## Основные команды
 
-```sh
-python3 scripts/bootstrap.py
-sh scripts/build-image.sh
-docker compose up -d --wait db
-docker compose run --rm --no-deps -T ingest support-agent migrate
-docker compose run --rm --no-deps -T ingest support-agent seed-demo
-docker compose run --rm --no-deps -T -e DELIVERY_MODE=reviewed ingest support-agent run-demo
-docker compose up -d --no-build --wait --wait-timeout 60
-docker compose ps
-```
-
-Запускаются ingest, media, зарезервированный media_text worker, analysis, delivery API, sender, scheduler и PostgreSQL. API доступен на `127.0.0.1:8000`, PostgreSQL — `127.0.0.1:55432`. Данные переживают restart. Наружу других портов нет. Migrate — одноразовый процесс; scheduler не дублируется внутри API.
-
-При Docker bootstrap токены создаются внутри `agent-storage`; host- и container-файлы токенов — разные источники конфигурации. `seed-demo` в local обновляет серверный реестр по своему credential-файлу. Проверять API из Docker можно без копирования/вывода токенов:
-
-```sh
-docker compose exec -T ingest python scripts/api_probe.py --url http://delivery:8000 --tokens /app/.local/tokens.json
-```
-
-Если данные уже создавались через host, его `.local/tokens.json` действует до явного Docker seed. Для обычного перезапуска seed не нужен. Compose сохраняет shadow по `.env`; однократный reviewed demo доставляет только локальному получателю. Для интерактивного согласования с доставкой настройте `DELIVERY_MODE=reviewed` одновременно в API/sender и перезапустите их.
-
-## Проверки
-
-```sh
-.venv/bin/pytest -q
-.venv/bin/ruff check src tests scripts migrations
-.venv/bin/support-agent load-test --tickets 3000 --workers 4
-.venv/bin/support-agent evaluate
-```
-
-Тесты и load-test создают собственные временные PostgreSQL-БД и удаляют только их. SQLite не используется. Нужна локальная миграционная учётная запись с правом CREATE DATABASE; runtime-роли остаются non-owner/NOSUPERUSER/NOBYPASSRLS. Не запускайте тестовые команды с производственной конфигурацией.
-
-Фактические результаты, mapping требований на проверки и непройденные внешние проверки — в [docs/validation.md](docs/validation.md). `evaluate` без независимой разметки и реальных результатов возвращает `not_run`. Даже 100% прохождения fixtures не превращается в precision/recall Qwen.
-
-## Команды и API
-
-```sh
-.venv/bin/support-agent ingest-once
-.venv/bin/support-agent worker media
-.venv/bin/support-agent worker media_text
-.venv/bin/support-agent worker analysis
-.venv/bin/support-agent worker delivery
-.venv/bin/support-agent worker retention
-.venv/bin/support-agent scheduler
-.venv/bin/support-agent build-digest atlas --period 2026-11-06
-.venv/bin/support-agent metrics
-.venv/bin/support-agent retention atlas
-# Только явный запуск удаления:
-.venv/bin/support-agent retention atlas --execute
-```
-
-`worker <kind> --once` выполняет ограниченный drain всех готовых этапов, удобный для демонстрации. Для постоянно работающих процессов используйте отдельные команды без `--once`.
-
-| API | Доступ |
+| Задача | Команда |
 |---|---|
-| `/health/live`, `/health/ready` | Без контента; readiness проверяет БД/runtime role |
-| `GET /products/{p}/groups`, `/cards`, `/cards/{id}` | Разрешённый продукт, пагинация |
-| `GET /products/{p}/evidence/{revision_id}` | Только маскированные сегменты своего продукта |
-| `GET /products/{p}/digest?period=YYYY-MM-DD` | Проверяемая подборка с числами и источниками |
-| `POST /products/{p}/cards/{id}/decision` | product_reviewer; revision/content_hash/decision/reason |
-| `GET /products/{p}/pipeline`, `POST .../jobs/{id}/retry` | operator |
-| `POST /products/{p}/retention?dry_run=true` | operator; execute ставит контролируемое задание |
-| `GET /metrics` | Только operator, без raw content и ID labels |
+| Список команд | `make help` |
+| Полная проверка: lint, формат, schemas, PostgreSQL tests | `make check` |
+| Проверить установленный wheel вне checkout | `make check-wheel` |
+| Собрать образ и пройти demo в Docker | `make docker-demo` |
+| Запустить / остановить сервисы, сохранив данные | `make up` / `make stop` |
+| Пересоздать JSON Schema и OpenAPI | `make schemas` |
+| Собрать PDF | `make report` |
+| Проверить окружение, миграции, registry и capacity | `make doctor` |
 
-Для решения JSON: `{"revision":1,"content_hash":"<hash из карточки>","decision":"accepted","reason":"Подтверждено владельцем"}`. Дополнительные поля/поддельные роли отклоняются. Обновление источника инвалидирует старое согласие. Неопределённый результат внешнего создания не переотправляется без идемпотентности/сверки; для уже отправленных устаревших данных есть correction_required.
+Для полного Docker-пути сначала выполните `make docker-demo`, затем `make up`. Привилегированные `migrate`/`bootstrap` отделены от runtime; API и workers не получают admin URL/пароль владельца БД. [Docker и подробные команды](docs/quickstart.md#docker).
+
+## Структура проекта
+
+```text
+src/support_agent/
+  services/             ingest, media, analysis, delivery и общие правила состояния
+  adapters/             источник, модели, backlog и ограниченное storage
+  contracts/ auth/ db/   строгие схемы, доступ, данные и транзакции
+  queue.py              leases, fencing, retry и shared provider slots
+  provisioning.py       административный реестр продуктов и issuer-subjects
+  diagnostics.py        безопасный doctor без вывода credentials
+  observability/        агрегированные метрики без исходного контента
+prompts/ config/        версионируемые prompts и конфигурационные примеры
+migrations/            зафиксированная история схемы и RLS
+fixtures/demo/          синтетические обращения, медиа и controlled responses
+tests/                  unit, integration, e2e и packaging
+scripts/ deploy/        проверки, сборка, PDF и развёртывание
+docs/                   сценарии работы, архитектура, контракты и ограничения
+```
+
+Python-пакет называется `support-insight-agent`, CLI — `support-agent`. Wheel содержит runtime-ресурсы, prompts, demo и миграции и работает вне исходного репозитория. Docker устанавливает такой же non-editable wheel.
+
+## Что завершено в 0.2
+
+Исправлены удаление исторических цитат, hard TTL каждой ревизии, повторы extraction при занятом assignment lease, повторная синхронизация одной source version, восстановление неизвестной доставки и ручная очередь review. Добавлены административный `provision`, `doctor`, trusted backlog catalog, сохранённые схемы, переносимая упаковка, безопасный build context и CI.
+
+[Изменения версии](CHANGELOG.md) · [Проверяемые сценарии](docs/validation.md) · [Работа оператора и reviewer](docs/workflows.md)
 
 ## Подключение компании
 
-[Контракты шлюза и список внешних зависимостей](docs/integrations.md), [архитектура и инварианты](docs/architecture.md), [retries, deletion, retention, unknown delivery и восстановление](docs/operations.md), [JSON Schema/OpenAPI](docs/schemas/openapi.json).
-
-Нужны реальные endpoints/credentials/CA, issuer и grants, семантика change feed/дублей, возможности backlog, сборки и мощности моделей, правила хранения и независимый размеченный набор. Реальные модели, авторизация компании, media/GPU-нагрузка и 24-часовой SLO пока **not run**. Это локально проверенный MVP, не production-ready система.
-
-Файлы задания использованы как проектный brief; команда из DOCX — контекст. Исходный PDF из iCloud не удалось прочитать из-за системного timeout; отсутствующие фото и review PDF не выдумывались.
-
-## PDF-отчёт
-
-[Скачать технический отчёт](docs/OpenCaseKillers_Report_RU.pdf): сквозной сценарий, схема сервисов, стек, данные и evidence, доступы, команды запуска на хосте и в Docker, API, проверки и условия внутреннего пилота. Исходник — [docs/report_ru.md](docs/report_ru.md).
+Для внутреннего режима нужен подтверждённый HTTPS-шлюз, credentials/CA, корпоративный issuer с проверяемым RSA-ключом, серверные привязки продуктов и пользователей, гарантии change feed/backlog и реальные мощности моделей. Пример registry: `config/products.example.json`; пример runtime-настроек: `deploy/internal.env.example`.
 
 ```sh
-.venv/bin/uv sync --frozen --extra dev --extra docs --cache-dir .cache/uv
-.venv/bin/python scripts/build_report.py
+.venv/bin/support-agent provision --config config/products.example.json --dry-run
 ```
 
-Для сборки нужен DejaVu Sans (например, `fonts-dejavu-core` на Linux); можно передать `--font-dir`. В готовый PDF шрифты встроены. Инструменты отчёта не нужны runtime приложения.
+Пример содержит условные IDs; реальные `sub` и права назначает администратор. Рабочие `.env`, токены, сертификаты и ключи остаются вне Git и Docker build context. [Полный контракт и порядок подключения](docs/integrations.md).
 
-Перед публикацией 8 ноября 2026 полный набор проверен повторно: **42 passed**. Результат — [docs/publication-checks.json](docs/publication-checks.json). Нагрузочные числа в отчёте относятся к сохранённому прогону от 6 ноября.
+Внутренний путь дополнительно проверяется через локальный HTTPS-шлюз с собственным CA и подписанными JWT. Это проверка протокола и workflow на синтетических ответах, не измерение Qwen и не подтверждение API компании.

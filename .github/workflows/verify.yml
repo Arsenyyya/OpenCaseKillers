@@ -1,0 +1,52 @@
+name: Verify project
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install locked development environment
+        run: make install
+      - name: Lint, schema contracts and PostgreSQL tests
+        run: make check
+      - name: Build portable release wheel
+        run: make check-wheel
+      - name: Preserve test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: verification-results
+          path: .local/test-results.xml
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve verified release wheel
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-wheel
+          path: .local/dist/*.whl
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stop disposable CI services
+        if: always()
+        run: docker compose down --volumes --remove-orphans

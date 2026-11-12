@@ -1,0 +1,207 @@
+{
+  "$defs": {
+    "BindingSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "product_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,60}$",
+          "title": "Product Id",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "enum": [
+              "viewer",
+              "product_reviewer",
+              "operator"
+            ],
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "product_id",
+        "roles"
+      ],
+      "title": "BindingSpec",
+      "type": "object"
+    },
+    "KnownTask": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "feature_request",
+            "defect"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "need": {
+          "maxLength": 500,
+          "minLength": 3,
+          "title": "Need",
+          "type": "string"
+        },
+        "reference": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Reference",
+          "type": "string"
+        },
+        "status": {
+          "maxLength": 60,
+          "minLength": 1,
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "need",
+        "status",
+        "reference"
+      ],
+      "title": "KnownTask",
+      "type": "object"
+    },
+    "PrincipalSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "bindings": {
+          "items": {
+            "$ref": "#/$defs/BindingSpec"
+          },
+          "maxItems": 100,
+          "title": "Bindings",
+          "type": "array"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "PrincipalSpec",
+      "type": "object"
+    },
+    "ProductSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9_-]{1,60}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "known_tasks": {
+          "items": {
+            "$ref": "#/$defs/KnownTask"
+          },
+          "maxItems": 100,
+          "title": "Known Tasks",
+          "type": "array"
+        },
+        "owner": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Owner",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "enum": [
+              "gateway",
+              "demo"
+            ],
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "terms": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "maxProperties": 100,
+          "title": "Terms",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "owner"
+      ],
+      "title": "ProductSpec",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "principals": {
+      "items": {
+        "$ref": "#/$defs/PrincipalSpec"
+      },
+      "maxItems": 5000,
+      "minItems": 1,
+      "title": "Principals",
+      "type": "array"
+    },
+    "products": {
+      "items": {
+        "$ref": "#/$defs/ProductSpec"
+      },
+      "maxItems": 100,
+      "minItems": 1,
+      "title": "Products",
+      "type": "array"
+    },
+    "provider_slots": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "propertyNames": {
+        "enum": [
+          "llm",
+          "asr",
+          "vl"
+        ]
+      },
+      "title": "Provider Slots",
+      "type": "object"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "products",
+    "principals"
+  ],
+  "title": "ProvisionSpec",
+  "type": "object"
+}

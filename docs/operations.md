@@ -1,36 +1,60 @@
-# Эксплуатация
+# Эксплуатация и восстановление
 
-## Локальные команды
+## Окружения и credentials
 
-См. проверяемую последовательность в README. Production-системы автоматически не подключаются. Доставка shadow по умолчанию; reviewed включается явно. В demo получатель — таблица receipts в локальной БД, с собственной транзакцией и unique correlation key.
+Административная учётная запись используется только для `migrate`, `provision` и local demo bootstrap. В Compose это одноразовые `migrate` и tools-service `bootstrap`. В среду API/workers не передаются DATABASE_ADMIN_URL, POSTGRES_PASSWORD, WORKER_PASSWORD или API_PASSWORD как отдельные переменные; runtime получает только свой non-owner DATABASE_URL и необходимые параметры шлюза/issuer.
 
-## Ошибки и восстановление
+Host `.env` — удобство локальной разработки, а не production secret distribution. Для компании нужны отдельные окружения административного job и runtime, read-only mounts CA/public key и её secret manager. `.env`, env variants, токены, private keys и caches исключены из Git/build context/wheel.
 
-1. Оператор смотрит `/products/{p}/pipeline` и `/metrics` со своим токеном. Логи содержат только безопасные IDs/stage/error_code, не источник, токены и provider body. HTTP-ошибка содержит request_id и типизированный error.
-2. Transient/429/timeout: до 3 попыток, backoff 2^attempt+jitter и Retry-After. Нет вложенных HTTP-retries. Capacity wait не расходует попытки и не запускает model HTTP. Model budget расходуется при реальном старте вызова и не сбрасывается operator retry.
-3. После падения worker running lease истекает и захватывается снова. Старый claim не коммитит и не продлевает новый. SIGTERM даёт закончить текущую ограниченную операцию, затем закрывает ресурсы; принудительная остановка восстанавливается через lease. Пустая очередь ждёт 1 сек, source poll — 10 минут.
-4. Dead retry: `POST /products/{p}/jobs/{id}/retry`. Только operator; удалённые ревизии и исчерпанный model budget не возрождаются. Повтор не обнуляет ранее использованные вызовы модели. Для новых prompts/новой normalization нужен контролируемый reprocessing с новым version/dedupe key, автоматической массовой переобработки нет.
-5. `delivery_unknown`: проверить correlation key в backlog вне агента, зафиксировать результат. Не переотправлять вслепую. Автоматического resolve-endpoint нет: ручную сверку и изменение статуса выполняет доверенный оператор по согласованному runbook компании. До её появления internal delivery с неизвестными capabilities следует оставить shadow.
-6. `correction_required`: внешний получатель мог сохранить старый snapshot. Сверить external_id, исправить/отозвать карточку вручную в разрешённой системе. Новая ревизия требует нового решения; старое approval не наследуется. Локальные receipts очищаются от evidence при удалении, но это не гарантия удаления внешних копий.
+`support-agent doctor` проверяет runtime-роль, актуальность Alembic head, configured products/cursors/assignment leases, provider slots и demo corpus. Он не выводит credentials и не обращается к реальным моделям по умолчанию. Internal connectivity помечается not_probed.
 
-При массовой недоступности моделей ingest продолжает сохранять данные; ограниченная очередь ждёт capacity/retry, остающиеся dead/partial видимы. Не объявлять success по отсутствию exception в worker loop — проверять pipeline status и coverage.
+## Очередь
 
-## Удаление и retention
+Jobs переходят queued → running → succeeded, retry_wait, dead или cancelled. Claim — короткая PostgreSQL-транзакция с SKIP LOCKED и уникальным token. Сеть/модель/декодирование выполняются вне DB-транзакции. Heartbeat продлевает job, assignment и slot; потеря владения отменяет полезную работу. Просроченный worker не коммитит результат нового владельца.
 
-`support-agent retention atlas` — dry-run; `support-agent retention atlas --execute` — явное удаление с теми же application rules. API operator может dry-run либо поставить retention job в очередь; scheduler не запускает скрытое массовое удаление.
+Временная ошибка/429/timeout повторяется максимум трижды, с exponential backoff+jitter и Retry-After. Сам httpx retry не делает. Capacity wait не расходует попытки; extraction сохраняется до ожидания assignment и не вызывается заново при каждом ожидании. Model budget считается по всей принятой ревизии, включая неудачные обращения.
 
-По умолчанию TTL производного контента 90 дней от последнего принятого изменения. Год хранения относится к исходной системе. TTL должен быть утверждён владельцем данных. Удаление/access_revoked не ждёт TTL: tombstone, cancel jobs, removal needs/memberships/cache/raw/segments/quotes/observation dates, invalidation digest/outbox. В карточках очищаются snapshots; минимальные audit events и неперсональные hashes остаются. Tombstone/sequence сохраняются для запрета stale replay. Группы без разрешённых источников теряют канонический текст. Fixtures являются неизменным синтетическим тестовым набором, не хранилищем runtime-вложений; runtime внутреннего режима не сохраняет локальные копии bytes.
+Оператор смотрит `/pipeline`, `/outbox` и `/metrics` своего scope. Разрешённый retry dead job не обнуляет model budget, не восстанавливает удалённый контент и не обходит текущую accepted revision. При исчерпанном бюджете сохраняется явная partial/coverage failure, а job остаётся dead.
 
-После purge проверить: Revision.raw/segments null, Need/MediaCache/Observation отсутствуют, частоты пересчитаны, карточки stale/correction_required. Не строить группы заново из удалённого текста. Неполный тикет не становится полным из-за удаления проблемного evidence.
+`worker <kind> --once` обрабатывает только выбранный stage. `scripts/verify_demo.py`/`run-demo` используют общий bounded drain всех этапов. Пустая очередь ждёт, SIGTERM завершает ограниченную текущую работу и закрывает ресурсы; аварийная остановка восстанавливается через lease.
 
-## Резервное копирование и конфигурация
+## Неопределённая доставка
 
-PostgreSQL и demo receipts — persistent volume `pgdata`; local bootstrap tokens/storage — `agent-storage`. Секреты `.env`, `.local/tokens.json` имеют 0600 и не попадают в git/Docker build context. Для эксплуатации — secret manager компании, отдельная миграционная учётная запись, отсутствие admin URL/секретов в API/worker окружении. В локальном Compose admin URL присутствует для удобства migrate/seed CLI; перед пилотом отделить bootstrap job/secrets от runtime services.
+1. Остановить автоматические повторения этого outbox; delivery_unknown уже не переотправляется вслепую.
+2. Проверить correlation key у получателя.
+3. Под ролью operator зафиксировать delivered, not_delivered или corrected через `/outbox/{id}/resolve` либо `resolve-delivery` CLI.
+4. При not_delivered требуется новое явное accepted от reviewer. Оператор не получает права согласования.
+5. При устаревшем отправленном snapshot выполнить контролируемую внешнюю коррекцию; подтвердить corrected только после неё.
 
-Не удалять volumes для обычного перезапуска. Делать согласованный backup/restore средствами PostgreSQL; при восстановлении внешние записи сверять по correlation key перед возобновлением sender. Для emergency stop остановить sender и scheduler; перевод в shadow и перезапуск исключает новые отправки. Уже начавшийся запрос может завершиться — проверять outbox/unknown/correction.
+Причина, actor и время сверки сохраняются. Свободный текст маскируется; при обязательном удалении связанных данных его копии очищаются. См. [точные запросы](workflows.md). Никакой общей транзакции PostgreSQL + внешний backlog нет, exactly-once не обещается.
 
-## Метрики и пределы интерпретации
+## Удаление и hard retention
 
-Coverage = fully processed / все доступные обращения принятого охвата. Partial/dead/needs_review остаются в знаменателе; общий source-wide total неизвестен, API возвращает null. Отдельно видны каналы, очередь, oldest age, p50/p95 processing latency, реальные provider call counts и сообщённые tokens, ASR минуты/VL страницы, retries/invalid JSON, карточки/просмотры/решения, delivery outcomes. IDs не являются метками метрик. Часть отказов авторизации отражена HTTP/audit-контуром, полный security SIEM требует корпоративной интеграции. Нельзя считать закрытие тикета ручными трудозатратами.
+Удаление/access_revoked создаёт tombstone, отменяет jobs и очищает все ревизии тикета: raw, segments, validated extraction, media cache, needs, observation dates. По структурным ticket_id/revision_id очищаются также старые карточки, дайджесты, review comments и local receipts — даже если тикет давно перешёл в другую группу. Частоты пересчитываются; pending outbox отменяется, отправленный помечается для коррекции.
 
-Цель пилота — >=95% доступных записей полностью обработаны за 24 часа. Локальный load-test проверяет координацию очереди на mock latency, не Qwen/GPU, полный media profile или достижение SLO. Команда `measure-endpoints` делает 1–5 синтетических вызовов только явно настроенного internal gateway; результат требует отдельной мощности и проверки на реальной смеси каналов.
+TTL по умолчанию 90 дней применяется к **каждой Revision.created_at**, а не к последнему обновлению тикета. Свежая текущая ревизия не удаляется из-за истечения старой истории. Если истекла текущая, тикет tombstone-ится. Год хранения относится к исходной системе и не даёт бессрочного хранения производных данных.
+
+```sh
+# Preview: metadata only, default batch100, maximum500:
+.venv/bin/support-agent retention atlas --limit 100
+# Следующая страница preview:
+.venv/bin/support-agent retention atlas --limit 100 --offset 100
+# Явное ограниченное удаление; execute всегда offset0:
+.venv/bin/support-agent retention atlas --execute --limit 100
+```
+
+Вывод содержит revision_ids, ticket_ids, total_revisions и has_more. Повторяйте execute с offset0, пока has_more не станет false. API execute ставит задание; отдельный Compose-сервис retention (worker retention) продолжает ограниченные batches отдельными jobs. Scheduler не запускает скрытое массовое удаление. Минимальный audit и безопасные ordering/tombstone metadata сохраняются; семантические группы не восстанавливаются из удалённого текста.
+
+## Метрики
+
+Метрики агрегируются PostgreSQL: API не загружает raw content, большие сегменты и Card.snapshot ради подсчёта. Scope и доступ operator проверяются сервером. Ticket/user IDs не являются labels.
+
+Coverage = fully processed / весь доступный принятый охват; partial/dead/needs_review остаются в знаменателе. Source-wide total неизвестен и возвращается null, пока шлюз не предоставляет соответствующую статистику. Времена обработки, доставки и решения различаются. Card latency отсчитывается от первого создания стабильной карточки; это не трудозатраты и не длительность закрытия тикета.
+
+Provider calls — попытки запуска адаптера, включая ошибки; токены суммируются только при сообщении провайдером. Синтетический benchmark не измеряет реальное число GPU-часов. Рост очереди, oldest age, retry rate, invalid JSON, отказанные действия и delivery statuses видимы отдельно.
+
+## Обновление и резервирование
+
+Перед переходом 0.1 → 0.2 остановите локальные workers/API, сохраните backup PostgreSQL и примените миграции отдельной учётной записью. Предыдущие миграции заморожены; 0004 добавляет новые constraints/поля и ограничивает runtime grants. Readiness откажет старой схеме вместо тихого запуска с отсутствующими колонками.
+
+Не удаляйте volumes при обычном restart. Восстановление реальной БД с внешним backlog требует проверки correlation keys до возобновления sender. Аварийное отключение: остановить sender/scheduler, проверить уже начатые запросы, перевести API/sender в shadow и перезапустить. Завершившийся внешний HTTP-запрос нельзя отменить одной сменой env-переменной.

@@ -14,6 +14,10 @@ async def ingest_once(app, product):
     while True:
         with app.db.tx([product]) as s:
             cursor = s.get(Cursor, (product, source.source_id))
+            if cursor is None:
+                from support_agent.errors import ConfigurationError
+
+                raise ConfigurationError("source_registry_not_provisioned")
             position, initialized = cursor.position, cursor.initialized_at
         batch = await source.list_changes(position, app.settings.batch_size)
         sequences = [c.sequence for c in batch.changes]
@@ -49,8 +53,25 @@ async def ingest_once(app, product):
                 if t and t.source_seq >= change.sequence:
                     s.add(Metric(product_id=product, name="dedupe_hits", value=1, created_at=app.clock.now()))
                     continue
-                lease.token, lease.until = None, None
                 content = contents.get(change.sequence)
+                if (
+                    t
+                    and change.operation == "upsert"
+                    and not t.deleted
+                    and t.source_version == change.version
+                ):
+                    current = s.get(Revision, (product, f"{t.id}:{t.current_revision}"))
+                    if current is None or current.content_hash != digest(content.model_dump(mode="json")):
+                        raise Permanent("source_version_content_changed")
+                    # The source may redeliver the same version under a newer feed sequence.
+                    # Advance ordering metadata, never the accepted revision or content lifetime.
+                    t.source_seq = change.sequence
+                    s.add(Metric(product_id=product, name="dedupe_hits", value=1, created_at=app.clock.now()))
+                    continue
+                if t and change.operation != "upsert" and t.deleted and t.source_version == change.version:
+                    t.source_seq = change.sequence
+                    continue
+                lease.token, lease.until = None, None
                 if (
                     not t
                     and content

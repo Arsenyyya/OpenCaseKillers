@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Kind = Literal["feature_request", "defect", "service_request", "incident", "unclear"]
 
@@ -59,6 +59,13 @@ class TicketContent(StrictModel):
             raise ValueError("timezone required")
         return v
 
+    @model_validator(mode="after")
+    def unique_attachments(self):
+        ids = [attachment.id for attachment in self.attachments]
+        if len(ids) != len(set(ids)):
+            raise ValueError("attachment IDs must be unique within the ticket")
+        return self
+
 
 class Change(StrictModel):
     sequence: int = Field(ge=1)
@@ -68,24 +75,31 @@ class Change(StrictModel):
     changed_at: datetime
     backfill: bool = False
 
+    @field_validator("changed_at")
+    @classmethod
+    def aware(cls, value):
+        if value.tzinfo is None:
+            raise ValueError("timezone required")
+        return value
+
 
 class ChangeBatch(StrictModel):
     changes: list[Change] = Field(max_length=200)
-    next_cursor: str
+    next_cursor: str = Field(min_length=1, max_length=200)
     has_more: bool
 
 
 class Segment(StrictModel):
-    segment_id: str
-    source_ref: str
-    media_type: str
-    page: int | None = None
-    start_ms: int | None = None
-    end_ms: int | None = None
+    segment_id: str = Field(min_length=1, max_length=100)
+    source_ref: str = Field(min_length=1, max_length=255)
+    media_type: str = Field(min_length=1, max_length=40)
+    page: int | None = Field(default=None, ge=1)
+    start_ms: int | None = Field(default=None, ge=0)
+    end_ms: int | None = Field(default=None, ge=0)
     text: str = Field(max_length=200000)
     quality: Literal["usable", "poor", "unknown"] = "unknown"
-    confidence: float | None = None
-    processor_version: str
+    confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    processor_version: str = Field(min_length=1, max_length=100)
 
 
 class DecisionRequest(StrictModel):
@@ -93,3 +107,9 @@ class DecisionRequest(StrictModel):
     content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
     decision: Literal["accepted", "rejected", "needs_clarification"]
     reason: str = Field(min_length=1, max_length=500)
+
+
+class DeliveryResolutionRequest(StrictModel):
+    resolution: Literal["delivered", "not_delivered", "corrected"]
+    reason: str = Field(min_length=1, max_length=500)
+    external_id: str | None = Field(default=None, min_length=1, max_length=100)

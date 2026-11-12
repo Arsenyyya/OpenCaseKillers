@@ -1,14 +1,32 @@
 name: support-insight
-x-app: &app
+x-image: &image
   image: support-insight-agent:local
   build: .
-  env_file: .env
-  environment: &app-env
-    DATABASE_URL: postgresql+psycopg://agent_worker:${WORKER_PASSWORD}@db:5432/agent
-    DATABASE_ADMIN_URL: postgresql+psycopg://agent_owner:${POSTGRES_PASSWORD}@db:5432/agent
-    STORAGE_DIR: /app/.local/storage
   volumes:
     - agent-storage:/app/.local
+x-runtime-env: &runtime-env
+  APP_ENV: ${APP_ENV:-local}
+  MODE: ${MODE:-demo}
+  DELIVERY_MODE: ${DELIVERY_MODE:-shadow}
+  DATABASE_URL: postgresql+psycopg://agent_worker:${WORKER_PASSWORD}@db:5432/agent
+  BUSINESS_TIMEZONE: ${BUSINESS_TIMEZONE:-Europe/Moscow}
+  SERVICE_PRODUCTS: '${SERVICE_PRODUCTS:-["atlas","boreal"]}'
+  STORAGE_DIR: /app/.local/storage
+  GATEWAY_URL: ${GATEWAY_URL:-}
+  GATEWAY_TOKEN: ${GATEWAY_TOKEN:-}
+  ALLOWED_HOSTS: '${ALLOWED_HOSTS:-[]}'
+  JWT_ISSUER: ${JWT_ISSUER:-}
+  JWT_AUDIENCE: ${JWT_AUDIENCE:-}
+  JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+  INTERNAL_CA: ${INTERNAL_CA:-}
+  BACKLOG_IDEMPOTENT: ${BACKLOG_IDEMPOTENT:-false}
+  BACKLOG_LOOKUP: ${BACKLOG_LOOKUP:-false}
+  EXTRACTION_MODEL: ${EXTRACTION_MODEL:-Qwen 3.8}
+  ASR_MODEL: ${ASR_MODEL:-Qwen-ASR}
+  VL_MODEL: ${VL_MODEL:-Qwen-VL}
+x-app: &app
+  <<: *image
+  environment: *runtime-env
   depends_on:
     migrate:
       condition: service_completed_successfully
@@ -33,11 +51,21 @@ services:
       retries: 20
     restart: unless-stopped
   migrate:
-    <<: *app
+    <<: *image
+    environment:
+      DATABASE_ADMIN_URL: postgresql+psycopg://agent_owner:${POSTGRES_PASSWORD}@db:5432/agent
     command: ["support-agent", "migrate"]
     depends_on:
       db:
         condition: service_healthy
+    restart: "no"
+  bootstrap:
+    <<: *image
+    profiles: ["tools"]
+    environment:
+      <<: *runtime-env
+      DATABASE_ADMIN_URL: postgresql+psycopg://agent_owner:${POSTGRES_PASSWORD}@db:5432/agent
+    command: ["support-agent", "seed-demo"]
     restart: "no"
   ingest:
     <<: *app
@@ -55,7 +83,7 @@ services:
     <<: *app
     command: ["support-agent", "api", "--host", "0.0.0.0"]
     environment:
-      <<: *app-env
+      <<: *runtime-env
       DATABASE_URL: postgresql+psycopg://agent_api:${API_PASSWORD}@db:5432/agent
     ports: ["127.0.0.1:8000:8000"]
     healthcheck:
@@ -66,6 +94,9 @@ services:
   sender:
     <<: *app
     command: ["support-agent", "worker", "delivery"]
+  retention:
+    <<: *app
+    command: ["support-agent", "worker", "retention"]
   scheduler:
     <<: *app
     command: ["support-agent", "scheduler"]

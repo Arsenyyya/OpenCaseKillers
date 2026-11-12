@@ -3,11 +3,6 @@
     "Attachment": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "pattern": "^[\\w-]{1,64}$",
-          "title": "Id",
-          "type": "string"
-        },
         "content_ref": {
           "pattern": "^[\\w./-]{1,200}$",
           "title": "Content Ref",
@@ -16,6 +11,11 @@
         "declared_type": {
           "maxLength": 100,
           "title": "Declared Type",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[\\w-]{1,64}$",
+          "title": "Id",
           "type": "string"
         },
         "transcript": {
@@ -53,21 +53,13 @@
   },
   "additionalProperties": false,
   "properties": {
-    "external_id": {
-      "pattern": "^[\\w-]{1,100}$",
-      "title": "External Id",
-      "type": "string"
-    },
-    "version": {
-      "maxLength": 100,
-      "minLength": 1,
-      "title": "Version",
-      "type": "string"
-    },
-    "text": {
-      "maxLength": 200000,
-      "title": "Text",
-      "type": "string"
+    "attachments": {
+      "items": {
+        "$ref": "#/$defs/Attachment"
+      },
+      "maxItems": 32,
+      "title": "Attachments",
+      "type": "array"
     },
     "channel": {
       "enum": [
@@ -78,19 +70,6 @@
       ],
       "title": "Channel",
       "type": "string"
-    },
-    "occurred_at": {
-      "format": "date-time",
-      "title": "Occurred At",
-      "type": "string"
-    },
-    "attachments": {
-      "items": {
-        "$ref": "#/$defs/Attachment"
-      },
-      "maxItems": 32,
-      "title": "Attachments",
-      "type": "array"
     },
     "duplicate_of": {
       "anyOf": [
@@ -104,6 +83,27 @@
       ],
       "default": null,
       "title": "Duplicate Of"
+    },
+    "external_id": {
+      "pattern": "^[\\w-]{1,100}$",
+      "title": "External Id",
+      "type": "string"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "text": {
+      "maxLength": 200000,
+      "title": "Text",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
     }
   },
   "required": [

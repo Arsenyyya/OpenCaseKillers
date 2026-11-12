@@ -1,14 +1,15 @@
 import asyncio
-from contextlib import suppress
+from datetime import timedelta
+import logging
 from sqlalchemy import select
 from support_agent.settings import Settings
 from support_agent.clock import Clock
 from support_agent.db.session import Database
-from support_agent.db.models import Revision, Metric, Receipt
+from support_agent.db.models import Revision, Metric, Receipt, Cursor
 from support_agent.queue import Queue
 from support_agent.adapters.providers import DemoModels, Gateway, FixtureSource, BoundSource
 from support_agent.adapters.storage import LocalStorage
-from support_agent.errors import Forbidden, Budget, Stale
+from support_agent.errors import Forbidden, Budget, Stale, Transient, ConfigurationError
 
 
 class Application:
@@ -18,7 +19,7 @@ class Application:
         self.clock = clock or Clock()
         self.queue = Queue(self.db, settings, self.clock)
         self.gateway = Gateway(settings) if settings.mode == "internal" else None
-        self.models = models or self.gateway or DemoModels(settings.fixtures_dir)
+        self.models = models if models is not None else (self.gateway or DemoModels(settings.fixtures_dir))
         self.storage = LocalStorage(settings.fixtures_dir / "assets", settings.max_file_bytes)
 
     def service_scope(self, product):
@@ -27,11 +28,14 @@ class Application:
 
     def source(self, product):
         self.service_scope(product)
-        return (
-            BoundSource(self.gateway, product)
-            if self.gateway
-            else FixtureSource(self.settings.fixtures_dir, product)
-        )
+        if self.gateway:
+            with self.db.tx([product]) as session:
+                cursor = session.get(Cursor, (product, self.gateway.source_id))
+                if not cursor:
+                    raise ConfigurationError("source_registry_not_provisioned")
+                initial_since = cursor.initialized_at - timedelta(days=30)
+            return BoundSource(self.gateway, product, initial_since)
+        return FixtureSource(self.settings.fixtures_dir, product)
 
     async def close(self):
         if self.gateway:
@@ -46,7 +50,7 @@ class Application:
                 await asyncio.sleep(self.settings.lease_seconds / 3)
                 self.queue.slot_action(slot_id, token)
 
-        heartbeat = None
+        heartbeat, work = None, None
         try:
             with self.db.tx([claim.product_id]) as s:
                 self.queue.guard(s, claim)
@@ -67,9 +71,18 @@ class Application:
                     )
                 )
             heartbeat = asyncio.create_task(renew())
-            result = await asyncio.wait_for(factory(), timeout=self.settings.timeout_seconds + 1)
-            if heartbeat.done():
-                heartbeat.result()
+            work = asyncio.create_task(factory())
+            done, _ = await asyncio.wait(
+                {work, heartbeat},
+                timeout=self.settings.timeout_seconds + 1,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if heartbeat in done:
+                # A renewal failure revokes useful work; do not let its exception mask cleanup.
+                raise Transient() from None
+            if work not in done:
+                raise Transient() from None
+            result = work.result()
             if isinstance(result, tuple):
                 raw, usage = result
                 with self.db.tx([claim.product_id]) as s:
@@ -81,12 +94,20 @@ class Application:
                 return raw
             return result
         finally:
-            if heartbeat:
-                heartbeat.cancel()
-                with suppress(asyncio.CancelledError):
-                    await heartbeat
-            with suppress(Stale):
+            pending = [task for task in (work, heartbeat) if task is not None]
+            for task in pending:
+                if not task.done():
+                    task.cancel()
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            try:
                 self.queue.slot_action(slot_id, token, release=True)
+            except Stale:
+                pass
+            except Exception:
+                logging.getLogger("support_agent").warning(
+                    "provider_slot_release_failed provider=%s", provider
+                )
 
     async def local_deliver(self, product, key, payload):
         # A separate transaction represents the local receiver's durable idempotency store.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "support-insight-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "Auditable product-scoped support insight pipeline"
 requires-python = ">=3.12"
 dependencies = [
@@ -20,6 +20,12 @@ docs = ["reportlab>=4.4,<5", "pypdfium2>=4.30,<6"]
 support-agent = "support_agent.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/support_agent"]
+[tool.hatch.build.targets.wheel.force-include]
+"prompts" = "support_agent/resources/prompts"
+"config" = "support_agent/resources/config"
+"fixtures/demo" = "support_agent/resources/fixtures/demo"
+"migrations" = "support_agent/resources/migrations"
+"alembic.ini" = "support_agent/resources/alembic.ini"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

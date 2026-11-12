@@ -22,7 +22,17 @@ async def run_media(app, c):
     if len(attachments) < len(content.attachments):
         failed.append("file_count_limit")
     config_hash = digest(
-        [app.settings.max_pages, app.settings.max_audio_seconds, app.settings.max_file_bytes]
+        {
+            "pages": app.settings.max_pages,
+            "audio_seconds": app.settings.max_audio_seconds,
+            "file_bytes": app.settings.max_file_bytes,
+            "segments": app.settings.max_segments,
+            "parse_memory_mb": app.settings.parse_memory_mb,
+            "parse_timeout_seconds": app.settings.parse_timeout_seconds,
+            "mode": app.settings.mode,
+            "asr_model": app.settings.asr_model,
+            "vl_model": app.settings.vl_model,
+        }
     )
     for a in attachments:
         try:
@@ -103,6 +113,8 @@ async def run_media(app, c):
     with app.db.tx([p]) as s:
         app.queue.guard(s, c)
         r = s.get(Revision, (p, c.revision_id))
+        if digest(r.segments or []) != digest(normalized):
+            r.extracted_items, r.processed_at = None, None
         r.segments = normalized
         r.coverage = {
             "complete": not failed,

@@ -8,7 +8,14 @@ from urllib.parse import urlparse, quote
 
 import httpx
 from support_agent.contracts import ChangeBatch, TicketContent, Extraction, Match
-from support_agent.errors import Permanent, Transient, DeliveryUnknown
+from support_agent.errors import (
+    Permanent,
+    Transient,
+    DeliveryUnknown,
+    MissingFixture,
+    InvalidGatewayResponse,
+    Budget,
+)
 from support_agent.policy import digest
 from support_agent.settings import ROOT
 
@@ -52,14 +59,14 @@ class DemoModels:
     async def extract(self, segments, repair=False):
         key = digest([s["text"] for s in segments])
         if key not in self.answers:
-            raise Permanent()
+            raise MissingFixture()
         return json.dumps(self.answers[key], ensure_ascii=False), {}
 
     async def match(self, item, candidates, segments):
         # Finite fixture vocabulary only: this is never a production classifier.
         known = {i["need"] for v in self.answers.values() for i in v["items"]}
         if item.need not in known:
-            raise Permanent()
+            raise MissingFixture()
         found = next((c for c in candidates if c["need"] == item.need), None)
         return json.dumps(
             {
@@ -73,7 +80,7 @@ class DemoModels:
     async def recognize(self, data, media_type, page=None):
         key = digest([base64.b64encode(data).decode(), page])
         if key not in self.media:
-            raise Permanent()
+            raise MissingFixture()
         return self.media[key]
 
 
@@ -85,6 +92,7 @@ class Gateway:
 
     def __init__(self, settings, *, allow_loopback_for_test=False):
         self.settings = settings
+        self.model_id = settings.extraction_model
         self.base = (settings.gateway_url or "").rstrip("/")
         u = urlparse(self.base)
         test = (
@@ -92,6 +100,8 @@ class Gateway:
             and settings.app_env == "local"
             and u.hostname in ("127.0.0.1", "localhost")
         )
+        if u.username or u.password or u.query or u.fragment:
+            raise Permanent()
         if not test and (u.scheme != "https" or u.hostname not in settings.allowed_hosts):
             raise Permanent()
         verify = ssl.create_default_context(cafile=settings.internal_ca) if settings.internal_ca else True
@@ -124,25 +134,36 @@ class Gateway:
                     raise Transient(retry)
                 if response.status_code >= 300:
                     raise Permanent()
+                response_limit = self.settings.max_file_bytes if raw else self.settings.max_gateway_json_bytes
+                length = response.headers.get("Content-Length")
+                if length:
+                    try:
+                        if int(length) < 0 or int(length) > response_limit:
+                            raise InvalidGatewayResponse()
+                    except ValueError:
+                        raise InvalidGatewayResponse() from None
                 data = bytearray()
                 async for part in response.aiter_bytes():
                     data.extend(part)
-                    if len(data) > self.settings.max_file_bytes:
-                        raise Permanent()
+                    if len(data) > response_limit:
+                        raise InvalidGatewayResponse()
                 if raw:
                     return bytes(data)
                 try:
                     return json.loads(data)
                 except (ValueError, UnicodeError):
-                    raise Permanent() from None
+                    raise InvalidGatewayResponse() from None
         except (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError):
             raise Transient() from None
 
-    async def list_changes(self, product, cursor, limit):
+    async def list_changes(self, product, cursor, limit, initial_since=None):
+        payload = {"cursor": cursor, "limit": limit}
+        if initial_since is not None:
+            payload["initial_since"] = initial_since.isoformat()
         r = await self.request(
             "POST",
             f"/v1/products/{quote(product, safe='')}/changes",
-            payload={"cursor": cursor, "limit": limit},
+            payload=payload,
         )
         try:
             return ChangeBatch.model_validate_json(json.dumps(r))
@@ -172,48 +193,56 @@ class Gateway:
         )
 
     async def extract(self, segments, repair=False):
+        payload = {
+            "model": self.model_id,
+            "prompt_version": "extraction-v1",
+            "system": (ROOT / "prompts/extraction-v1.txt").read_text(),
+            "segments": segments,
+            "schema": Extraction.model_json_schema(),
+            "repair": repair,
+            "max_output_tokens": self.settings.extraction_output_tokens,
+        }
+        self.check_model_input(payload)
         r = await self.request(
             "POST",
             "/v1/models/extract",
-            payload={
-                "model": self.model_id,
-                "prompt_version": "extraction-v1",
-                "system": (ROOT / "prompts/extraction-v1.txt").read_text(),
-                "segments": segments,
-                "schema": Extraction.model_json_schema(),
-                "repair": repair,
-                "max_output_tokens": 3000,
-            },
+            payload=payload,
         )
         return self.model_result(r)
 
     async def match(self, item, candidates, segments):
+        payload = {
+            "model": self.model_id,
+            "prompt_version": "matching-v1",
+            "system": (ROOT / "prompts/matching-v1.txt").read_text(),
+            "item": item.model_dump(),
+            "candidates": candidates,
+            "segments": segments,
+            "schema": Match.model_json_schema(),
+            "max_output_tokens": self.settings.matching_output_tokens,
+        }
+        self.check_model_input(payload)
         r = await self.request(
             "POST",
             "/v1/models/match",
-            payload={
-                "model": self.model_id,
-                "prompt_version": "matching-v1",
-                "system": (ROOT / "prompts/matching-v1.txt").read_text(),
-                "item": item.model_dump(),
-                "candidates": candidates,
-                "segments": segments,
-                "schema": Match.model_json_schema(),
-                "max_output_tokens": 800,
-            },
+            payload=payload,
         )
         return self.model_result(r)
+
+    def check_model_input(self, payload):
+        if len(json.dumps(payload, ensure_ascii=False)) > self.settings.model_input_chars:
+            raise Budget()
 
     @staticmethod
     def model_result(r):
         if not isinstance(r, dict) or not isinstance(r.get("output_json"), str):
-            raise Permanent()
+            raise InvalidGatewayResponse()
         usage = r.get("usage", {})
         if not isinstance(usage, dict) or any(
             k not in ("input_tokens", "output_tokens") or type(v) is not int or v < 0
             for k, v in usage.items()
         ):
-            raise Permanent()
+            raise InvalidGatewayResponse()
         return r["output_json"], usage
 
     async def recognize(self, data, media_type, page=None):
@@ -221,7 +250,7 @@ class Gateway:
             "POST",
             "/v1/models/media",
             payload={
-                "model": "Qwen-ASR" if media_type == "audio" else "Qwen-VL",
+                "model": self.settings.asr_model if media_type == "audio" else self.settings.vl_model,
                 "data_base64": base64.b64encode(data).decode(),
                 "media_type": media_type,
                 "page": page,
@@ -234,8 +263,10 @@ class Gateway:
     async def deliver(self, product, key, payload):
         if self.settings.backlog_lookup:
             r = await self.request("POST", "/v1/backlog/lookup", payload={"product_id": product, "key": key})
-            if r.get("external_id"):
-                return str(r["external_id"])
+            if not isinstance(r, dict) or "external_id" not in r:
+                raise InvalidGatewayResponse()
+            if r["external_id"] is not None:
+                return self.external_id(r)
         try:
             r = await self.request(
                 "POST",
@@ -247,20 +278,37 @@ class Gateway:
             if not self.settings.backlog_idempotent and not self.settings.backlog_lookup:
                 raise DeliveryUnknown() from None
             raise
-        if not isinstance(r, dict) or not isinstance(r.get("external_id"), str):
-            raise DeliveryUnknown()
-        return r["external_id"][:100]
+        except InvalidGatewayResponse:
+            if not self.settings.backlog_idempotent and not self.settings.backlog_lookup:
+                raise DeliveryUnknown() from None
+            raise Transient() from None
+        try:
+            return self.external_id(r)
+        except InvalidGatewayResponse:
+            if self.settings.backlog_idempotent or self.settings.backlog_lookup:
+                raise Transient() from None
+            raise DeliveryUnknown() from None
+
+    @staticmethod
+    def external_id(response):
+        if not isinstance(response, dict) or not isinstance(response.get("external_id"), str):
+            raise InvalidGatewayResponse()
+        value = response["external_id"]
+        if not value.strip() or len(value) > 100:
+            raise InvalidGatewayResponse()
+        return value
 
     async def close(self):
         await self.client.aclose()
 
 
 class BoundSource:
-    def __init__(self, gateway, product):
+    def __init__(self, gateway, product, initial_since=None):
         self.gateway, self.product, self.source_id = gateway, product, gateway.source_id
+        self.initial_since = initial_since
 
     async def list_changes(self, cursor, limit):
-        return await self.gateway.list_changes(self.product, cursor, limit)
+        return await self.gateway.list_changes(self.product, cursor, limit, self.initial_since)
 
     async def read_ticket(self, ticket_id, version):
         return await self.gateway.read_ticket(self.product, ticket_id, version)

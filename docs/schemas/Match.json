@@ -3,16 +3,16 @@
     "Evidence": {
       "additionalProperties": false,
       "properties": {
-        "segment_id": {
-          "maxLength": 100,
-          "minLength": 1,
-          "title": "Segment Id",
-          "type": "string"
-        },
         "quote": {
           "maxLength": 500,
           "minLength": 1,
           "title": "Quote",
+          "type": "string"
+        },
+        "segment_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Segment Id",
           "type": "string"
         }
       },
@@ -46,11 +46,6 @@
       ],
       "title": "Candidate Id"
     },
-    "reason": {
-      "maxLength": 300,
-      "title": "Reason",
-      "type": "string"
-    },
     "evidence": {
       "items": {
         "$ref": "#/$defs/Evidence"
@@ -58,6 +53,11 @@
       "maxItems": 3,
       "title": "Evidence",
       "type": "array"
+    },
+    "reason": {
+      "maxLength": 300,
+      "title": "Reason",
+      "type": "string"
     }
   },
   "required": [

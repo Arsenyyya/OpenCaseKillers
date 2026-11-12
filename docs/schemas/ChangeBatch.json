@@ -3,20 +3,19 @@
     "Change": {
       "additionalProperties": false,
       "properties": {
-        "sequence": {
-          "minimum": 1,
-          "title": "Sequence",
-          "type": "integer"
+        "backfill": {
+          "default": false,
+          "title": "Backfill",
+          "type": "boolean"
+        },
+        "changed_at": {
+          "format": "date-time",
+          "title": "Changed At",
+          "type": "string"
         },
         "external_id": {
           "pattern": "^[\\w-]{1,100}$",
           "title": "External Id",
-          "type": "string"
-        },
-        "version": {
-          "maxLength": 100,
-          "minLength": 1,
-          "title": "Version",
           "type": "string"
         },
         "operation": {
@@ -28,15 +27,16 @@
           "title": "Operation",
           "type": "string"
         },
-        "changed_at": {
-          "format": "date-time",
-          "title": "Changed At",
-          "type": "string"
+        "sequence": {
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
         },
-        "backfill": {
-          "default": false,
-          "title": "Backfill",
-          "type": "boolean"
+        "version": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
         }
       },
       "required": [
@@ -60,13 +60,15 @@
       "title": "Changes",
       "type": "array"
     },
-    "next_cursor": {
-      "title": "Next Cursor",
-      "type": "string"
-    },
     "has_more": {
       "title": "Has More",
       "type": "boolean"
+    },
+    "next_cursor": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Next Cursor",
+      "type": "string"
     }
   },
   "required": [

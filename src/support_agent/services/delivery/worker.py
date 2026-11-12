@@ -1,58 +1,52 @@
 from sqlalchemy import select
-from support_agent.db.models import Outbox, Card, Decision, Grant, Principal, ProductLease
-from support_agent.errors import DeliveryUnknown
+
+from support_agent.db.models import Card, Outbox, ProductLease
+from support_agent.errors import DeliveryUnknown, Permanent
+from support_agent.services.delivery.service import approval_is_current
 from support_agent.services.state import audit
+
+
+def _lock_product(s, p):
+    s.scalar(
+        select(ProductLease)
+        .where(ProductLease.product_id == p, ProductLease.id == "assignment")
+        .with_for_update()
+    )
 
 
 async def run_delivery(app, c):
     p = c.product_id
     with app.db.tx([p]) as s:
-        s.scalar(
-            select(ProductLease)
-            .where(ProductLease.product_id == p, ProductLease.id == "assignment")
-            .with_for_update()
-        )
+        _lock_product(s, p)
         j = app.queue.guard(s, c)
         oid = j.dedupe_key.removeprefix("delivery:")
-        o = s.scalar(select(Outbox).where(Outbox.product_id == p, Outbox.id == oid).with_for_update())
-        if not o or o.status in ("cancelled", "delivery_unknown", "correction_required", "delivered"):
-            app.queue.complete(s, c)
-            return
-        card = s.get(Card, (p, o.card_id))
-        decision = s.get(Decision, (p, o.decision_id))
-        authorized = s.scalar(
-            select(Grant.id)
-            .join(Principal, Principal.id == Grant.actor)
-            .where(
-                Grant.product_id == p,
-                Grant.actor == decision.actor,
-                Grant.role == "product_reviewer",
-                Principal.enabled.is_(True),
-            )
-        )
-        if (
-            not authorized
-            or not card.snapshot
-            or app.settings.delivery_mode != "reviewed"
-            or card.revision != o.revision
-            or (card.content_hash != o.content_hash)
-            or card.status != "accepted"
-            or (decision.decision != "accepted")
-            or decision.content_hash != o.content_hash
+        outbox = s.scalar(select(Outbox).where(Outbox.product_id == p, Outbox.id == oid).with_for_update())
+        if not outbox or outbox.status in (
+            "cancelled",
+            "delivery_unknown",
+            "correction_required",
+            "delivered",
+            "awaiting_review",
+            "corrected",
         ):
-            o.status = "cancelled"
+            app.queue.complete(s, c)
+            return
+        card = s.get(Card, (p, outbox.card_id))
+        if app.settings.delivery_mode != "reviewed" or not approval_is_current(s, p, outbox, card):
+            outbox.status = "cancelled"
             app.queue.complete(s, c)
             return
         if (
-            o.status == "sending"
+            outbox.status == "sending"
             and app.gateway
             and not (app.settings.backlog_idempotent or app.settings.backlog_lookup)
         ):
-            o.status = "delivery_unknown"
+            outbox.status = "delivery_unknown"
+            audit(s, p, "delivery_unknown", outbox.id, app.clock.now())
             app.queue.complete(s, c)
             return
-        o.status = "sending"
-        key, payload = o.correlation_key, card.snapshot
+        outbox.status = "sending"
+        key, payload = outbox.correlation_key, card.snapshot
     try:
         external = (
             await app.gateway.deliver(p, key, payload)
@@ -61,29 +55,30 @@ async def run_delivery(app, c):
         )
     except DeliveryUnknown:
         with app.db.tx([p]) as s:
-            s.scalar(
-                select(ProductLease)
-                .where(ProductLease.product_id == p, ProductLease.id == "assignment")
-                .with_for_update()
-            )
+            _lock_product(s, p)
             app.queue.guard(s, c)
             s.get(Outbox, (p, oid)).status = "delivery_unknown"
             audit(s, p, "delivery_unknown", oid, app.clock.now())
             app.queue.complete(s, c)
         return
+    except Permanent:
+        # A definitive gateway rejection is a known failure, unlike an interrupted successful POST.
+        with app.db.tx([p]) as s:
+            _lock_product(s, p)
+            app.queue.guard(s, c)
+            s.get(Outbox, (p, oid)).status = "failed"
+            audit(s, p, "delivery_failed", oid, app.clock.now())
+        raise
     with app.db.tx([p]) as s:
-        s.scalar(
-            select(ProductLease)
-            .where(ProductLease.product_id == p, ProductLease.id == "assignment")
-            .with_for_update()
-        )
+        _lock_product(s, p)
         app.queue.guard(s, c)
-        o = s.scalar(select(Outbox).where(Outbox.product_id == p, Outbox.id == oid).with_for_update())
-        card = s.get(Card, (p, o.card_id))
-        stale = o.status == "cancelled" or card.revision != o.revision or card.content_hash != o.content_hash
-        o.external_id, o.sent_at = external, app.clock.now()
-        o.status = "correction_required" if stale else "delivered"
-        if card.revision == o.revision:
-            card.status = "correction_required" if stale else "delivered"
-        audit(s, p, o.status, oid, app.clock.now())
+        outbox = s.scalar(select(Outbox).where(Outbox.product_id == p, Outbox.id == oid).with_for_update())
+        card = s.get(Card, (p, outbox.card_id))
+        # Source deletion/revision changes and reviewer revocation can race the external request.
+        current = outbox.status != "cancelled" and approval_is_current(s, p, outbox, card)
+        outbox.external_id, outbox.sent_at = external, app.clock.now()
+        outbox.status = "delivered" if current else "correction_required"
+        if card and card.revision == outbox.revision:
+            card.status = outbox.status
+        audit(s, p, outbox.status, oid, app.clock.now())
         app.queue.complete(s, c)

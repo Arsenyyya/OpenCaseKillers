@@ -192,9 +192,15 @@ async def test_reviewer_revocation_blocks_pending_delivery(app):
         c.id,
         DecisionRequest(revision=c.revision, content_hash=c.content_hash, decision="accepted", reason="test"),
     )
-    with app.db.tx(["atlas"]) as s:
-        binding = s.scalar(select(Grant).where(Grant.actor == "reviewer"))
-        s.delete(binding)
+    from support_agent.db.session import Database
+
+    admin = Database(app.settings.database_admin_url)
+    try:
+        with admin.tx() as s:
+            binding = s.scalar(select(Grant).where(Grant.actor == "reviewer"))
+            s.delete(binding)
+    finally:
+        admin.close()
     await drain(app)
     with app.db.tx(["atlas"]) as s:
         assert s.scalar(select(Outbox.status)) == "cancelled"

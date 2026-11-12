@@ -1,26 +1,40 @@
 from functools import lru_cache
 from pathlib import Path
+import re
 from typing import Literal
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT = Path(__file__).resolve().parents[2]
+PACKAGE_DIR = Path(__file__).resolve().parent
+CHECKOUT = PACKAGE_DIR.parents[1]
+ROOT = CHECKOUT if (CHECKOUT / "pyproject.toml").is_file() else PACKAGE_DIR / "resources"
+
+
+class AdminSettings(BaseSettings):
+    """Explicit administrative credentials, independent of runtime/model configuration."""
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
+    database_admin_url: str = Field(min_length=1, repr=False)
+    business_timezone: str = "Europe/Moscow"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
     app_env: Literal["local", "internal"] = "local"
     mode: Literal["demo", "internal"] = "demo"
     delivery_mode: Literal["shadow", "reviewed"] = "shadow"
-    database_url: str = "postgresql+psycopg://agent_worker:local@127.0.0.1:55432/agent"
-    database_admin_url: str = "postgresql+psycopg://agent_owner:local@127.0.0.1:55432/agent"
+    database_url: str = Field(
+        default="postgresql+psycopg://agent_worker:local@127.0.0.1:55432/agent", repr=False
+    )
+    database_admin_url: str | None = Field(default=None, repr=False)
     business_timezone: str = "Europe/Moscow"
     service_products: list[str] = ["atlas", "boreal"]
     fixtures_dir: Path = ROOT / "fixtures/demo"
-    storage_dir: Path = ROOT / ".local/storage"
-    token_file: Path = ROOT / ".local/tokens.json"
+    storage_dir: Path = Path.cwd() / ".local/storage"
+    token_file: Path = Path.cwd() / ".local/tokens.json"
     batch_size: int = Field(20, ge=1, le=200)
     poll_seconds: float = Field(600, ge=0.1)
     lease_seconds: int = Field(90, ge=2)
@@ -37,13 +51,20 @@ class Settings(BaseSettings):
     max_items: int = Field(12, ge=1, le=20)
     model_slots: int = Field(2, ge=1, le=16)
     timeout_seconds: float = Field(20, ge=0.1, le=60)
+    max_gateway_json_bytes: int = Field(1_000_000, ge=1000, le=10_000_000)
+    model_input_chars: int = Field(32000, ge=1000, le=200000)
+    extraction_output_tokens: int = Field(3000, ge=100, le=10000)
+    matching_output_tokens: int = Field(800, ge=100, le=3000)
+    extraction_model: str = Field(default="Qwen 3.8", min_length=1, max_length=60)
+    asr_model: str = Field(default="Qwen-ASR", min_length=1, max_length=100)
+    vl_model: str = Field(default="Qwen-VL", min_length=1, max_length=100)
     candidate_limit: int = Field(20, ge=1, le=20)
     matching_limit: int = Field(5, ge=1, le=5)
     threshold: int = Field(2, ge=2)
     window_days: int = Field(30, ge=1, le=90)
     retention_days: int = Field(90, ge=1)
     gateway_url: str | None = None
-    gateway_token: str | None = None
+    gateway_token: str | None = Field(default=None, repr=False)
     allowed_hosts: list[str] = []
     internal_ca: str | None = None
     jwt_issuer: str | None = None
@@ -54,6 +75,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_internal(self):
+        if not self.service_products or len(set(self.service_products)) != len(self.service_products):
+            raise ValueError("service_products must be a nonempty list of unique product IDs")
+        if any(not re.fullmatch(r"[A-Za-z0-9_-]{1,60}", p) for p in self.service_products):
+            raise ValueError("product IDs must contain only letters, digits, underscore or hyphen")
+        try:
+            ZoneInfo(self.business_timezone)
+        except ZoneInfoNotFoundError:
+            raise ValueError("unknown business timezone") from None
         if self.mode == "internal" or self.app_env == "internal":
             required = [
                 self.gateway_url,
@@ -67,7 +96,14 @@ class Settings(BaseSettings):
                     "internal requires gateway credentials and verified corporate JWT configuration"
                 )
             u = urlparse(self.gateway_url)
-            if u.scheme != "https" or u.hostname not in self.allowed_hosts or u.username or u.password:
+            if (
+                u.scheme != "https"
+                or u.hostname not in self.allowed_hosts
+                or u.username
+                or u.password
+                or u.query
+                or u.fragment
+            ):
                 raise ValueError("internal gateway must be HTTPS on the configured host allowlist")
             try:
                 from cryptography.hazmat.primitives import serialization

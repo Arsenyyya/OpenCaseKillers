@@ -1,45 +1,24 @@
 {
   "additionalProperties": false,
   "properties": {
-    "segment_id": {
-      "title": "Segment Id",
-      "type": "string"
-    },
-    "source_ref": {
-      "title": "Source Ref",
-      "type": "string"
-    },
-    "media_type": {
-      "title": "Media Type",
-      "type": "string"
-    },
-    "page": {
+    "confidence": {
       "anyOf": [
         {
-          "type": "integer"
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Page"
-    },
-    "start_ms": {
-      "anyOf": [
-        {
-          "type": "integer"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Start Ms"
+      "title": "Confidence"
     },
     "end_ms": {
       "anyOf": [
         {
+          "minimum": 0,
           "type": "integer"
         },
         {
@@ -49,9 +28,29 @@
       "default": null,
       "title": "End Ms"
     },
-    "text": {
-      "maxLength": 200000,
-      "title": "Text",
+    "media_type": {
+      "maxLength": 40,
+      "minLength": 1,
+      "title": "Media Type",
+      "type": "string"
+    },
+    "page": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Page"
+    },
+    "processor_version": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Processor Version",
       "type": "string"
     },
     "quality": {
@@ -64,20 +63,34 @@
       "title": "Quality",
       "type": "string"
     },
-    "confidence": {
+    "segment_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Segment Id",
+      "type": "string"
+    },
+    "source_ref": {
+      "maxLength": 255,
+      "minLength": 1,
+      "title": "Source Ref",
+      "type": "string"
+    },
+    "start_ms": {
       "anyOf": [
         {
-          "type": "number"
+          "minimum": 0,
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Confidence"
+      "title": "Start Ms"
     },
-    "processor_version": {
-      "title": "Processor Version",
+    "text": {
+      "maxLength": 200000,
+      "title": "Text",
       "type": "string"
     }
   },

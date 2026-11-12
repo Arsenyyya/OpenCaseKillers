@@ -23,7 +23,25 @@ class Transient(AgentError):
     code, status = "provider_unavailable", 503
 
     def __init__(self, retry_after=0):
-        self.retry_after = min(float(retry_after), 3600)
+        import math
+
+        try:
+            value = float(retry_after)
+        except (TypeError, ValueError):
+            value = 0
+        self.retry_after = min(max(value, 0), 3600) if math.isfinite(value) else 0
+
+
+class MissingFixture(Permanent):
+    code = "missing_demo_fixture"
+
+
+class ConfigurationError(AgentError):
+    code, status = "configuration_error", 503
+
+
+class InvalidGatewayResponse(Permanent):
+    code = "invalid_gateway_response"
 
 
 class Capacity(Transient):

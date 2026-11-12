@@ -1,0 +1,40 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "external_id": {
+      "anyOf": [
+        {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "External Id"
+    },
+    "reason": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+    },
+    "resolution": {
+      "enum": [
+        "delivered",
+        "not_delivered",
+        "corrected"
+      ],
+      "title": "Resolution",
+      "type": "string"
+    }
+  },
+  "required": [
+    "resolution",
+    "reason"
+  ],
+  "title": "DeliveryResolutionRequest",
+  "type": "object"
+}

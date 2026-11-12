@@ -1,0 +1,135 @@
+{
+  "date": "2026-11-12",
+  "timezone": "Europe/Moscow",
+  "version": "0.2.0",
+  "scope": "Local MVP and synthetic internal transport/workflow contract; not corporate production validation",
+  "make_check": {
+    "passed": 86,
+    "failed": 0,
+    "duration_seconds": 133.54,
+    "warnings": 1,
+    "lint": "passed",
+    "format": "passed",
+    "schema_drift": "passed"
+  },
+  "wheel": {
+    "installed_outside_checkout": "passed",
+    "version": "0.2.0",
+    "migration_head": "0004"
+  },
+  "native_demo": {
+    "status": "passed",
+    "synthetic": true,
+    "initial": {
+      "tickets": 40,
+      "memberships": 37,
+      "cards": 6,
+      "receipts": 2
+    },
+    "restart_and_repeat_unchanged": true,
+    "atlas_csv_origins_after_update_delete": 10,
+    "deleted_content_purged": true,
+    "model_quality": "not_run"
+  },
+  "linux_demo": {
+    "status": "passed",
+    "synthetic": true,
+    "initial": {
+      "tickets": 40,
+      "memberships": 37,
+      "cards": 6,
+      "receipts": 2
+    },
+    "restart_and_repeat_unchanged": true,
+    "atlas_csv_origins_after_update_delete": 10,
+    "deleted_content_purged": true,
+    "model_quality": "not_run"
+  },
+  "queue_load": {
+    "synthetic": true,
+    "scope": "PostgreSQL queue, fairness, retry and shared slots; no Qwen or end-to-end media benchmark",
+    "tickets": 3000,
+    "workers": 4,
+    "provider_limit": 2,
+    "peak_provider_calls": 2,
+    "elapsed_seconds": 36.295,
+    "status_counts": {
+      "succeeded": 3000
+    },
+    "worker_results": [
+      {
+        "completed": 761,
+        "capacity_waits": 736,
+        "transient_failures": 1
+      },
+      {
+        "completed": 757,
+        "capacity_waits": 740,
+        "transient_failures": 1
+      },
+      {
+        "completed": 732,
+        "capacity_waits": 749,
+        "transient_failures": 1
+      },
+      {
+        "completed": 750,
+        "capacity_waits": 741,
+        "transient_failures": 1
+      }
+    ],
+    "all_completed": true,
+    "illustrative_profile": {
+      "tickets_per_day": 1000,
+      "threefold": 3000,
+      "audio_share": 0.2,
+      "minutes_per_call": 5,
+      "image_pages_per_day": 100
+    },
+    "media_profile_executed": false,
+    "real_24h_freshness_slo": "not_run"
+  },
+  "api": {
+    "ready": true,
+    "atlas_cards": 3,
+    "cross_product_denied": true,
+    "anonymous_metrics_denied": true
+  },
+  "compose": {
+    "runtime_services_without_admin_credentials": 8,
+    "separate_admin_jobs": [
+      "migrate",
+      "bootstrap"
+    ],
+    "retention_worker": "running",
+    "api_and_database_health": "passed"
+  },
+  "internal_contract": {
+    "https_custom_ca": "passed",
+    "verified_rs256_jwt": "passed",
+    "source_models_backlog_http_path": "passed",
+    "models": "finite synthetic fixture responses"
+  },
+  "pdf": {
+    "pages": 13,
+    "visual_review": "passed",
+    "path": "docs/OpenCaseKillers_Report_RU.pdf"
+  },
+  "github_actions": {
+    "workflow": ".github/workflows/verify.yml",
+    "note": "See live check for the published commit; this snapshot records local execution."
+  },
+  "not_run": [
+    "real Qwen/ASR/VL quality",
+    "company endpoints/issuer/key rotation",
+    "independent semantic evaluation",
+    "real media/GPU load and 24-hour SLO",
+    "corporate backup/restore and external security review"
+  ],
+  "materials": {
+    "technical_brief": "read",
+    "team_plan": "read",
+    "original_case_pdf": "iCloud timeout on 2026-11-12",
+    "review_pdf_and_photo": "not supplied"
+  }
+}

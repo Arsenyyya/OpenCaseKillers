@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import re
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -12,6 +13,11 @@ class Database:
 
     @contextmanager
     def tx(self, products=(), actor="service"):
+        products = tuple(products)
+        if any(not isinstance(p, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,60}", p) for p in products):
+            raise ValueError("product scope must contain valid product IDs")
+        if not isinstance(actor, str) or not 1 <= len(actor) <= 100:
+            raise ValueError("actor must be a bounded server identity")
         with self.sessions.begin() as s:
             s.execute(
                 text("SELECT set_config('app.products', :p, true), set_config('app.actor', :a, true)"),
@@ -27,6 +33,13 @@ class Database:
             owner = s.scalar(text("SELECT tableowner=current_user FROM pg_tables WHERE tablename='tickets'"))
             if r[0] or r[1] or owner:
                 raise RuntimeError("runtime database role must be non-owner without superuser/BYPASSRLS")
+            from alembic.script import ScriptDirectory
+            from support_agent.settings import ROOT
+
+            expected = set(ScriptDirectory(str(ROOT / "migrations")).get_heads())
+            actual = set(s.scalars(text("SELECT version_num FROM alembic_version")))
+            if actual != expected:
+                raise RuntimeError("database schema is not at the installed migration head; run migrate")
             s.execute(text("SELECT 1 FROM jobs LIMIT 1"))
 
     def close(self):

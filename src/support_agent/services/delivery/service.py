@@ -1,6 +1,6 @@
 from datetime import datetime, date, time, timedelta, timezone
 from zoneinfo import ZoneInfo
-from sqlalchemy import select, case
+from sqlalchemy import select
 from support_agent.db.models import (
     Group,
     Membership,
@@ -13,10 +13,14 @@ from support_agent.db.models import (
     Product,
     ProductLease,
     Audit,
+    Job,
+    Grant,
+    Principal,
+    Ticket,
 )
 from support_agent.policy import digest, mask
 from support_agent.queue import enqueue
-from support_agent.errors import Conflict, NotFound
+from support_agent.errors import Conflict, NotFound, Permanent
 from support_agent.services.state import audit
 
 
@@ -31,6 +35,21 @@ def period_window(app, period=None):
 def build_digest(app, p, period=None):
     app.service_scope(p)
     day, start, end = period_window(app, period)
+    current_day = app.clock.now().astimezone(ZoneInfo(app.settings.business_timezone)).date().isoformat()
+    if day > current_day:
+        raise Conflict()
+    if day < current_day:
+        # Current active needs cannot reconstruct the historical as-of state after edits/deletions.
+        with app.db.tx([p]) as s:
+            saved = s.scalar(
+                select(Digest)
+                .where(Digest.product_id == p, Digest.period == day)
+                .order_by(Digest.created_at.desc(), Digest.id.desc())
+                .limit(1)
+            )
+            if not saved:
+                raise NotFound()
+            return {"period": day, "cards": saved.snapshot}
     with app.db.tx([p]) as s:
         # Serialize short snapshot writes with assignment/source commits, never model I/O.
         s.scalar(
@@ -90,8 +109,12 @@ def build_digest(app, p, period=None):
             origins = {m.origin_id for m in members}
             ns = s.scalars(
                 select(Need)
+                .join(Revision, (Revision.product_id == Need.product_id) & (Revision.id == Need.revision_id))
+                .join(Ticket, (Ticket.product_id == Need.product_id) & (Ticket.id == Need.ticket_id))
                 .where(
                     Need.product_id == p,
+                    Revision.number == Ticket.current_revision,
+                    Ticket.deleted.is_(False),
                     Need.group_id == g.id,
                     Need.eligible.is_(True),
                     Need.origin_id.in_(origins),
@@ -116,6 +139,8 @@ def build_digest(app, p, period=None):
                         "model_id": r.model_id,
                     }
                 )
+            from support_agent.catalog import lookup_known_task
+
             payload = {
                 "product_id": p,
                 "group_id": g.id,
@@ -129,7 +154,7 @@ def build_digest(app, p, period=None):
                 "growth_7d": growth,
                 "sources": sources[:3],
                 "first_seen": g.first_seen.isoformat(),
-                "known_backlog": None,
+                "known_backlog": lookup_known_task(s, p, g.kind, g.need),
                 "limitations": "Synthetic demo; no measured Qwen quality"
                 if app.settings.mode == "demo"
                 else "ASR/OCR evidence confirms normalized text only",
@@ -166,31 +191,37 @@ def build_digest(app, p, period=None):
             prepared.add(card.id)
             chosen.append({"card_id": card.id, "revision": card.revision, "content_hash": card.content_hash})
             audit(s, p, "card_prepared", card.id, app.clock.now())
-        # The daily snapshot retains earlier valid cards as new ones are added or revised.
-        chosen = [
-            {
-                "card_id": c.id,
-                "revision": c.revision,
-                "content_hash": c.content_hash,
-                "kind": c.snapshot["kind"],
-                "need": c.snapshot["need"],
-                "independent_origins": c.snapshot["independent_origins"],
-                "sources": c.snapshot["sources"],
-            }
-            for c in s.scalars(
-                select(Card)
-                .where(
+        # Use the same count/growth/wait tie-breaks for the final daily snapshot.
+        daily_cards = list(
+            s.scalars(
+                select(Card).where(
                     Card.product_id == p,
                     Card.id.in_(prepared),
                     Card.status.not_in(["stale", "correction_required"]),
                 )
-                .order_by(
-                    case((Card.snapshot["kind"].astext == "feature_request", 0), else_=1),
-                    Card.snapshot["independent_origins"].as_integer().desc(),
-                    Card.id,
-                )
             )
-            if c.snapshot
+        )
+        daily_cards = [card for card in daily_cards if card.snapshot]
+        daily_cards.sort(
+            key=lambda card: (
+                0 if card.snapshot["kind"] == "feature_request" else 1,
+                -card.snapshot["independent_origins"],
+                -card.snapshot.get("growth_7d", 0),
+                card.snapshot["first_seen"],
+                card.group_id,
+            )
+        )
+        chosen = [
+            {
+                "card_id": card.id,
+                "revision": card.revision,
+                "content_hash": card.content_hash,
+                "kind": card.snapshot["kind"],
+                "need": card.snapshot["need"],
+                "independent_origins": card.snapshot["independent_origins"],
+                "sources": card.snapshot["sources"],
+            }
+            for card in daily_cards
         ]
         if not chosen:
             return {"period": day, "cards": []}
@@ -208,6 +239,11 @@ def build_digest(app, p, period=None):
 def record_product_decision(app, actor, p, card_id, request):
     actor.require(p, "product_reviewer")
     with app.db.tx([p], actor.id) as s:
+        s.scalar(
+            select(ProductLease)
+            .where(ProductLease.product_id == p, ProductLease.id == "assignment")
+            .with_for_update()
+        )
         c = s.scalar(select(Card).where(Card.product_id == p, Card.id == card_id).with_for_update())
         if not c:
             raise NotFound()
@@ -226,7 +262,23 @@ def record_product_decision(app, actor, p, card_id, request):
         if previous:
             if previous.decision == request.decision:
                 if request.decision == "accepted" and app.settings.delivery_mode == "reviewed":
-                    prepare_outbox(s, app, p, c, previous)
+                    out = s.scalar(
+                        select(Outbox)
+                        .where(Outbox.product_id == p, Outbox.card_id == c.id, Outbox.revision == c.revision)
+                        .with_for_update()
+                    )
+                    if out and out.status == "awaiting_review":
+                        # An operator confirmed absence at the receiver; only a fresh reviewer action resumes.
+                        previous.actor, previous.reason, previous.created_at = (
+                            actor.id,
+                            mask(request.reason, p),
+                            app.clock.now(),
+                        )
+                        c.status, out.status = "accepted", "pending"
+                        _reset_delivery_job(s, app, p, out)
+                        audit(s, p, "card_reapproved", c.id, app.clock.now(), actor.id)
+                    else:
+                        prepare_outbox(s, app, p, c, previous)
                 return {"decision_id": previous.id, "status": c.status}
             raise Conflict()
         decision = Decision(
@@ -266,3 +318,103 @@ def prepare_outbox(s, app, p, card, decision):
     s.flush()
     enqueue(s, p, "delivery", f"delivery:{out.id}", app.clock.now())
     return out
+
+
+def approval_is_current(s, p, outbox, card):
+    if (
+        not card
+        or not card.snapshot
+        or card.revision != outbox.revision
+        or card.content_hash != outbox.content_hash
+        or digest(card.snapshot) != card.content_hash
+        or card.status != "accepted"
+    ):
+        return False
+    decision = s.get(Decision, (p, outbox.decision_id))
+    if (
+        not decision
+        or decision.decision != "accepted"
+        or decision.revision != outbox.revision
+        or decision.content_hash != outbox.content_hash
+    ):
+        return False
+    return bool(
+        s.scalar(
+            select(Grant.id)
+            .join(Principal, Principal.id == Grant.actor)
+            .where(
+                Grant.product_id == p,
+                Grant.actor == decision.actor,
+                Grant.role == "product_reviewer",
+                Principal.enabled.is_(True),
+            )
+        )
+    )
+
+
+def _reset_delivery_job(s, app, p, outbox):
+    key = f"delivery:{outbox.id}"
+    job = s.scalar(select(Job).where(Job.product_id == p, Job.dedupe_key == key).with_for_update())
+    if job:
+        if job.status == "running" and job.lease_until and job.lease_until > app.clock.now():
+            raise Conflict()
+        job.status, job.attempts, job.available_at = "queued", 0, app.clock.now()
+        job.claim_token, job.lease_until, job.error_code = None, None, None
+    else:
+        enqueue(s, p, "delivery", key, app.clock.now())
+
+
+def reconcile_delivery(app, actor, p, outbox_id, resolution, reason, external_id=None):
+    """Record explicit receiver reconciliation; an operator cannot approve a resend."""
+    actor.require(p, "operator")
+    reason = mask(reason.strip(), p)
+    if not reason or len(reason) > 500 or resolution not in ("delivered", "not_delivered", "corrected"):
+        raise Permanent()
+    if resolution == "delivered" and (not external_id or len(external_id) > 100):
+        raise Permanent()
+    if resolution == "not_delivered" and external_id:
+        raise Permanent()
+    with app.db.tx([p], actor.id) as s:
+        s.scalar(
+            select(ProductLease)
+            .where(ProductLease.product_id == p, ProductLease.id == "assignment")
+            .with_for_update()
+        )
+        out = s.scalar(select(Outbox).where(Outbox.product_id == p, Outbox.id == outbox_id).with_for_update())
+        if not out:
+            raise NotFound()
+        card = s.scalar(select(Card).where(Card.product_id == p, Card.id == out.card_id).with_for_update())
+        if resolution == "corrected":
+            if out.status != "correction_required":
+                raise Conflict()
+            out.status = "corrected"
+            if card and card.revision == out.revision and card.status == "correction_required":
+                card.status = "stale"
+        else:
+            if out.status != "delivery_unknown":
+                raise Conflict()
+            if resolution == "delivered":
+                current = approval_is_current(s, p, out, card)
+                out.external_id, out.sent_at = external_id, app.clock.now()
+                out.status = "delivered" if current else "correction_required"
+                if card and card.revision == out.revision:
+                    card.status = out.status
+            else:
+                same_snapshot = (
+                    card
+                    and card.snapshot
+                    and card.revision == out.revision
+                    and card.content_hash == out.content_hash
+                    and digest(card.snapshot) == card.content_hash
+                    and card.status not in ("stale", "correction_required")
+                )
+                out.status = "awaiting_review" if same_snapshot else "cancelled"
+                if same_snapshot:
+                    card.status = "needs_clarification"
+        out.resolution_reason, out.resolved_by, out.resolved_at = reason, actor.id, app.clock.now()
+        audit(s, p, f"delivery_resolved_{resolution}", out.id, app.clock.now(), actor.id)
+        return {
+            "outbox_id": out.id,
+            "status": out.status,
+            "requires_reapproval": out.status == "awaiting_review",
+        }

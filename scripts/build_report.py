@@ -1,6 +1,7 @@
 """Build the Russian project report with embedded Cyrillic fonts and selectable text."""
 
 import argparse
+from datetime import date
 import re
 from html import escape
 from pathlib import Path
@@ -120,6 +121,7 @@ class ResultTiles(Flowable):
 
 class PagedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
+        self.report_date = kwargs.pop("report_date", "12.11.2026")
         super().__init__(*args, **kwargs)
         self.pages = []
 
@@ -136,7 +138,7 @@ class PagedCanvas(canvas.Canvas):
             self.line(44, 39, A4[0] - 44, 39)
             self.setFillColor(MUTED)
             self.setFont("Report", 7.5)
-            self.drawString(44, 24, "OpenCaseKillers • Технический отчёт • 08.11.2026")
+            self.drawString(44, 24, f"OpenCaseKillers • Технический отчёт • {self.report_date}")
             self.drawRightString(A4[0] - 44, 24, f"{self._pageNumber} / {total}")
             super().showPage()
         super().save()
@@ -313,6 +315,7 @@ def parse_section(section, st, cover=False):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--font-dir", type=Path)
+    parser.add_argument("--date", default="2026-11-12", help="Report snapshot date, ISO format")
     parser.add_argument("--source", type=Path, default=ROOT / "docs/report_ru.md")
     parser.add_argument("--output", type=Path, default=ROOT / "docs/OpenCaseKillers_Report_RU.pdf")
     args = parser.parse_args()
@@ -336,7 +339,12 @@ def main():
         subject="Архитектура, технологии и запуск аналитического ИИ-агента",
         pageCompression=1,
     )
-    doc.build(story, onFirstPage=header, onLaterPages=header, canvasmaker=PagedCanvas)
+    date_label = date.fromisoformat(args.date).strftime("%d.%m.%Y")
+
+    def report_canvas(*canvas_args, **canvas_kwargs):
+        return PagedCanvas(*canvas_args, report_date=date_label, **canvas_kwargs)
+
+    doc.build(story, onFirstPage=header, onLaterPages=header, canvasmaker=report_canvas)
     print(
         f"PDF created: {args.output.relative_to(ROOT) if args.output.is_relative_to(ROOT) else args.output}"
     )

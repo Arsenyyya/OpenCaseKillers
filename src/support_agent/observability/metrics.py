@@ -1,95 +1,139 @@
-from collections import Counter
-from sqlalchemy import select
-from support_agent.db.models import Ticket, Revision, Job, Metric, Card, Outbox, Decision
+"""Bounded aggregate metrics; source content and per-ticket identifiers never leave the database."""
+
+from sqlalchemy import and_, select, func
+from support_agent.db.models import Ticket, Revision, Job, Metric, Card, Outbox, Decision, Audit
+
+PROVIDER_METRICS = (
+    "llm_calls",
+    "asr_calls",
+    "vl_calls",
+    "asr_minutes",
+    "vl_pages",
+    "invalid_json",
+    "forbidden_operations",
+    "dedupe_hits",
+)
 
 
 def percentile(values, fraction):
+    """Compatibility helper for local callers; persisted metrics use PostgreSQL percentiles."""
     if not values:
         return None
-    values = sorted(values)
-    return values[min(len(values) - 1, int((len(values) - 1) * fraction))]
+    ordered = sorted(values)
+    return ordered[min(len(ordered) - 1, int((len(ordered) - 1) * fraction))]
+
+
+def _percentiles(session, expression, source, condition=None):
+    statement = select(
+        func.percentile_cont(0.5).within_group(expression),
+        func.percentile_cont(0.95).within_group(expression),
+    ).select_from(source)
+    if condition is not None:
+        statement = statement.where(condition)
+    p50, p95 = session.execute(statement).one()
+    return {"p50": p50, "p95": p95}
 
 
 def report(app, products):
     now = app.clock.now()
     with app.db.tx(products) as s:
-        tickets = s.scalars(select(Ticket).where(Ticket.deleted.is_(False))).all()
-        revisions = {r.id: r for r in s.scalars(select(Revision))}
-        channel = {}
-        latencies = []
-        for t in tickets:
-            r = revisions.get(f"{t.id}:{t.current_revision}")
-            ch = channel.setdefault(
-                t.channel,
-                {
-                    "available_in_ingested_scope": 0,
-                    "accepted": 0,
-                    "fully_processed": 0,
-                    "partial": 0,
-                    "dead": 0,
-                    "needs_review": 0,
-                },
+        current = and_(
+            Revision.product_id == Ticket.product_id,
+            Revision.ticket_id == Ticket.id,
+            Revision.number == Ticket.current_revision,
+        )
+        source = Ticket.__table__.outerjoin(Revision.__table__, current)
+        rows = s.execute(
+            select(
+                Ticket.channel,
+                func.count(Ticket.id).label("available_in_ingested_scope"),
+                func.count(Revision.id).label("accepted"),
+                func.count()
+                .filter(
+                    and_(Revision.status == "processed", Revision.coverage["complete"].as_boolean().is_(True))
+                )
+                .label("fully_processed"),
+                func.count().filter(Revision.status == "partial").label("partial"),
+                func.count().filter(Revision.status == "dead").label("dead"),
+                func.count().filter(Revision.status == "needs_review").label("needs_review"),
             )
-            ch["available_in_ingested_scope"] += 1
-            if r:
-                ch["accepted"] += 1
-                if r.status == "processed" and r.coverage.get("complete"):
-                    ch["fully_processed"] += 1
-                if r.status in ("partial", "dead", "needs_review"):
-                    ch[r.status] += 1
-                if r.processed_at:
-                    latencies.append((r.processed_at - r.created_at).total_seconds())
-        for ch in channel.values():
-            ch["coverage"] = ch["fully_processed"] / ch["available_in_ingested_scope"]
-        jobs = s.scalars(select(Job)).all()
-        waiting = [j for j in jobs if j.status in ("queued", "retry_wait", "running")]
-        counters = Counter()
-        for m in s.scalars(select(Metric)):
-            counters[m.name] += m.value
-        cards = s.scalars(select(Card)).all()
-        outbox = s.scalars(select(Outbox)).all()
-        decisions = s.scalars(select(Decision)).all()
+            .select_from(source)
+            .where(Ticket.deleted.is_(False))
+            .group_by(Ticket.channel)
+        ).mappings()
+        channels = {}
+        for row in rows:
+            entry = dict(row)
+            name = entry.pop("channel")
+            entry["coverage"] = entry["fully_processed"] / entry["available_in_ingested_scope"]
+            channels[name] = entry
+        elapsed = func.extract("epoch", Revision.processed_at - Revision.created_at)
+        latency = _percentiles(
+            s, elapsed, source, and_(Ticket.deleted.is_(False), Revision.processed_at.is_not(None))
+        )
+        jobs = dict(s.execute(select(Job.status, func.count()).group_by(Job.status)).all())
+        waiting = Job.status.in_(["queued", "retry_wait", "running"])
+        count, oldest = s.execute(select(func.count(), func.min(Job.created_at)).where(waiting)).one()
+        attempts, retries = s.execute(
+            select(func.sum(Job.attempts), func.sum(func.greatest(Job.attempts - 1, 0)))
+        ).one()
+        counters = {name: 0 for name in PROVIDER_METRICS}
+        counters.update(
+            dict(
+                s.execute(
+                    select(Metric.name, func.sum(Metric.value))
+                    .where(Metric.name.in_(PROVIDER_METRICS))
+                    .group_by(Metric.name)
+                ).all()
+            )
+        )
+        tokens = {
+            key: s.scalar(select(func.sum(Revision.usage[key].as_integer())))
+            for key in ("input_tokens", "output_tokens")
+        }
+        cards = dict(s.execute(select(Card.status, func.count()).group_by(Card.status)).all())
+        viewed, unviewed = s.execute(
+            select(
+                func.count().filter(Card.viewed_at.is_not(None)),
+                func.count().filter(Card.viewed_at.is_(None)),
+            )
+        ).one()
+        delivery = dict(s.execute(select(Outbox.status, func.count()).group_by(Outbox.status)).all())
+        decision_source = Decision.__table__.join(
+            Card.__table__, and_(Decision.product_id == Card.product_id, Decision.card_id == Card.id)
+        )
+        decision_latency = _percentiles(
+            s, func.extract("epoch", Decision.created_at - Card.created_at), decision_source
+        )
+        delivery_source = Outbox.__table__.join(
+            Card.__table__, and_(Outbox.product_id == Card.product_id, Outbox.card_id == Card.id)
+        )
+        delivery_latency = _percentiles(
+            s,
+            func.extract("epoch", Outbox.sent_at - Card.created_at),
+            delivery_source,
+            Outbox.sent_at.is_not(None),
+        )
+        prepared = s.scalar(select(func.count()).select_from(Audit).where(Audit.event.like("card_prepared%")))
         return {
-            "channels": channel,
+            "channels": channels,
             "source_total_available": None,
-            "source_total_note": "Coverage denominator is the persisted agreed intake scope; source-wide baseline requires gateway counters",
-            "jobs": dict(Counter(j.status for j in jobs)),
-            "queue_length": len(waiting),
-            "oldest_job_seconds": max(
-                [max(0, (now - j.created_at).total_seconds()) for j in waiting], default=0
-            ),
-            "processing_latency_seconds": {
-                "p50": percentile(latencies, 0.5),
-                "p95": percentile(latencies, 0.95),
-            },
-            "retry_rate": sum(max(0, j.attempts - 1) for j in jobs) / max(1, sum(j.attempts for j in jobs)),
-            "provider": dict(counters),
-            "reported_tokens": {
-                key: sum(r.usage.get(key, 0) for r in revisions.values())
-                if any(key in r.usage for r in revisions.values())
-                else None
-                for key in ("input_tokens", "output_tokens")
-            },
-            "cards": dict(Counter(c.status for c in cards)),
-            "viewed_cards": sum(c.viewed_at is not None for c in cards),
-            "unviewed_cards": sum(c.viewed_at is None for c in cards),
-            "delivery": dict(Counter(o.status for o in outbox)),
-            "decision_latency_seconds_p50": percentile(
-                [
-                    (d.created_at - c.created_at).total_seconds()
-                    for d in decisions
-                    for c in cards
-                    if d.card_id == c.id
-                ],
-                0.5,
-            ),
-            "delivery_latency_seconds_p50": percentile(
-                [
-                    (o.sent_at - c.created_at).total_seconds()
-                    for o in outbox
-                    for c in cards
-                    if o.card_id == c.id and o.sent_at
-                ],
-                0.5,
-            ),
+            "source_total_note": "Denominator is the entire persisted agreed intake scope, including partial/dead; source-wide total requires gateway counters.",
+            "jobs": jobs,
+            "queue_length": count,
+            "oldest_job_seconds": max(0, (now - oldest).total_seconds()) if oldest else 0,
+            "processing_latency_seconds": latency,
+            "retry_rate": (retries or 0) / max(1, attempts or 0),
+            "provider": counters,
+            "reported_tokens": tokens,
+            "cards": cards,
+            "prepared_snapshots": prepared,
+            "viewed_cards": viewed,
+            "unviewed_cards": unviewed,
+            "delivery": delivery,
+            "decision_latency_seconds_p50": decision_latency["p50"],
+            "delivery_latency_seconds_p50": delivery_latency["p50"],
+            "decision_latency_seconds": decision_latency,
+            "delivery_latency_seconds": delivery_latency,
+            "card_latency_reference": "First preparation of the stable card; not ticket closure time or manual labor.",
         }

@@ -1,83 +1,183 @@
 {
-  "openapi": "3.1.0",
+  "components": {
+    "schemas": {
+      "DecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "content_hash": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "needs_clarification"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "content_hash",
+          "decision",
+          "reason"
+        ],
+        "title": "DecisionRequest",
+        "type": "object"
+      },
+      "DeliveryResolutionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "external_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "resolution": {
+            "enum": [
+              "delivered",
+              "not_delivered",
+              "corrected"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resolution",
+          "reason"
+        ],
+        "title": "DeliveryResolutionRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
   "info": {
     "title": "Support Insight Agent",
     "version": "0.1.0"
   },
+  "openapi": "3.1.0",
   "paths": {
     "/health/live": {
       "get": {
-        "summary": "Live",
         "operationId": "live_health_live_get",
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
+            },
+            "description": "Successful Response"
           }
-        }
+        },
+        "summary": "Live"
       }
     },
     "/health/ready": {
       "get": {
-        "summary": "Ready",
         "operationId": "ready_health_ready_get",
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
+            },
+            "description": "Successful Response"
           }
-        }
+        },
+        "summary": "Ready"
       }
     },
-    "/products/{product}/groups": {
+    "/metrics": {
       "get": {
-        "summary": "Groups",
-        "operationId": "groups_products__product__groups_get",
+        "operationId": "metrics_metrics_get",
         "parameters": [
           {
-            "name": "product",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Product"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "default": 25,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100000,
-              "minimum": 0,
-              "default": 0,
-              "title": "Offset"
-            }
-          },
-          {
-            "name": "authorization",
             "in": "header",
+            "name": "authorization",
             "required": false,
             "schema": {
               "anyOf": [
@@ -94,67 +194,68 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Metrics"
       }
     },
     "/products/{product}/cards": {
       "get": {
-        "summary": "Cards",
         "operationId": "cards_products__product__cards_get",
         "parameters": [
           {
-            "name": "product",
             "in": "path",
+            "name": "product",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Product"
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
             }
           },
           {
-            "name": "limit",
             "in": "query",
+            "name": "limit",
             "required": false,
             "schema": {
-              "type": "integer",
+              "default": 25,
               "maximum": 100,
               "minimum": 1,
-              "default": 25,
-              "title": "Limit"
+              "title": "Limit",
+              "type": "integer"
             }
           },
           {
-            "name": "offset",
             "in": "query",
+            "name": "offset",
             "required": false,
             "schema": {
-              "type": "integer",
+              "default": 0,
               "maximum": 100000,
               "minimum": 0,
-              "default": 0,
-              "title": "Offset"
+              "title": "Offset",
+              "type": "integer"
             }
           },
           {
-            "name": "authorization",
             "in": "header",
+            "name": "authorization",
             "required": false,
             "schema": {
               "anyOf": [
@@ -171,52 +272,53 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Cards"
       }
     },
     "/products/{product}/cards/{card_id}": {
       "get": {
-        "summary": "Card",
         "operationId": "card_products__product__cards__card_id__get",
         "parameters": [
           {
-            "name": "product",
             "in": "path",
+            "name": "product",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Product"
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
             }
           },
           {
+            "in": "path",
             "name": "card_id",
-            "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Card Id"
+              "title": "Card Id",
+              "type": "string"
             }
           },
           {
-            "name": "authorization",
             "in": "header",
+            "name": "authorization",
             "required": false,
             "schema": {
               "anyOf": [
@@ -233,177 +335,53 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
-      }
-    },
-    "/products/{product}/evidence/{revision_id}": {
-      "get": {
-        "summary": "Evidence",
-        "operationId": "evidence_products__product__evidence__revision_id__get",
-        "parameters": [
-          {
-            "name": "product",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Product"
-            }
-          },
-          {
-            "name": "revision_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Revision Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/products/{product}/digest": {
-      "get": {
-        "summary": "Digest",
-        "operationId": "digest_products__product__digest_get",
-        "parameters": [
-          {
-            "name": "product",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Product"
-            }
-          },
-          {
-            "name": "period",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-              "title": "Period"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
+        },
+        "summary": "Card"
       }
     },
     "/products/{product}/cards/{card_id}/decision": {
       "post": {
-        "summary": "Decision",
         "operationId": "decision_products__product__cards__card_id__decision_post",
         "parameters": [
           {
+            "in": "path",
             "name": "product",
-            "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Product"
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
             }
           },
           {
+            "in": "path",
             "name": "card_id",
-            "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Card Id"
+              "title": "Card Id",
+              "type": "string"
             }
           },
           {
-            "name": "authorization",
             "in": "header",
+            "name": "authorization",
             "required": false,
             "schema": {
               "anyOf": [
@@ -419,78 +397,65 @@
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DecisionRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
-        }
+        },
+        "summary": "Decision"
       }
     },
-    "/products/{product}/pipeline": {
+    "/products/{product}/digest": {
       "get": {
-        "summary": "Pipeline",
-        "operationId": "pipeline_products__product__pipeline_get",
+        "operationId": "digest_products__product__digest_get",
         "parameters": [
           {
-            "name": "product",
             "in": "path",
+            "name": "product",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Product"
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
             }
           },
           {
-            "name": "limit",
             "in": "query",
-            "required": false,
+            "name": "period",
+            "required": true,
             "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "default": 25,
-              "title": "Limit"
+              "format": "date",
+              "title": "Period",
+              "type": "string"
             }
           },
           {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100000,
-              "minimum": 0,
-              "default": 0,
-              "title": "Offset"
-            }
-          },
-          {
-            "name": "authorization",
             "in": "header",
+            "name": "authorization",
             "required": false,
             "schema": {
               "anyOf": [
@@ -507,52 +472,321 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Digest"
+      }
+    },
+    "/products/{product}/evidence/{revision_id}": {
+      "get": {
+        "operationId": "evidence_products__product__evidence__revision_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "title": "Revision Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
-        }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Evidence"
+      }
+    },
+    "/products/{product}/groups": {
+      "get": {
+        "operationId": "groups_products__product__groups_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "needs_review",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Needs Review"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Groups"
+      }
+    },
+    "/products/{product}/groups/{group_id}": {
+      "get": {
+        "operationId": "group_detail_products__product__groups__group_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Group Detail"
       }
     },
     "/products/{product}/jobs/{job_id}/retry": {
       "post": {
-        "summary": "Retry",
         "operationId": "retry_products__product__jobs__job_id__retry_post",
         "parameters": [
           {
+            "in": "path",
             "name": "product",
-            "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Product"
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
             }
           },
           {
+            "in": "path",
             "name": "job_id",
-            "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Job Id"
+              "title": "Job Id",
+              "type": "string"
             }
           },
           {
-            "name": "authorization",
             "in": "header",
+            "name": "authorization",
             "required": false,
             "schema": {
               "anyOf": [
@@ -569,53 +803,307 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry"
+      }
+    },
+    "/products/{product}/outbox": {
+      "get": {
+        "operationId": "outbox_products__product__outbox_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
-        }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Outbox"
+      }
+    },
+    "/products/{product}/outbox/{outbox_id}/resolve": {
+      "post": {
+        "operationId": "resolve_outbox_products__product__outbox__outbox_id__resolve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "outbox_id",
+            "required": true,
+            "schema": {
+              "title": "Outbox Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryResolutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Outbox"
+      }
+    },
+    "/products/{product}/pipeline": {
+      "get": {
+        "operationId": "pipeline_products__product__pipeline_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pipeline"
       }
     },
     "/products/{product}/retention": {
       "post": {
-        "summary": "Retention",
         "operationId": "retention_products__product__retention_post",
         "parameters": [
           {
-            "name": "product",
             "in": "path",
+            "name": "product",
             "required": true,
             "schema": {
-              "type": "string",
-              "title": "Product"
+              "pattern": "^[A-Za-z0-9_-]{1,60}$",
+              "title": "Product",
+              "type": "string"
             }
           },
           {
-            "name": "dry_run",
             "in": "query",
+            "name": "dry_run",
             "required": false,
             "schema": {
-              "type": "boolean",
               "default": true,
-              "title": "Dry Run"
+              "title": "Dry Run",
+              "type": "boolean"
             }
           },
           {
-            "name": "authorization",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
             "in": "header",
+            "name": "authorization",
             "required": false,
             "schema": {
               "anyOf": [
@@ -632,163 +1120,25 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/metrics": {
-      "get": {
-        "summary": "Metrics",
-        "operationId": "metrics_metrics_get",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "DecisionRequest": {
-        "properties": {
-          "revision": {
-            "type": "integer",
-            "minimum": 1.0,
-            "title": "Revision"
-          },
-          "content_hash": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$",
-            "title": "Content Hash"
-          },
-          "decision": {
-            "type": "string",
-            "enum": [
-              "accepted",
-              "rejected",
-              "needs_clarification"
-            ],
-            "title": "Decision"
-          },
-          "reason": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Reason"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "revision",
-          "content_hash",
-          "decision",
-          "reason"
-        ],
-        "title": "DecisionRequest"
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
             },
-            "type": "array",
-            "title": "Detail"
+            "description": "Validation Error"
           }
         },
-        "type": "object",
-        "title": "HTTPValidationError"
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
+        "summary": "Retention"
       }
     }
   }
