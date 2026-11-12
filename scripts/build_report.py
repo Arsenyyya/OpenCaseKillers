@@ -1,7 +1,6 @@
 """Build the Russian project report with embedded Cyrillic fonts and selectable text."""
 
 import argparse
-from datetime import date
 import re
 from html import escape
 from pathlib import Path
@@ -11,10 +10,10 @@ from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
     Flowable,
+    Image,
     PageBreak,
     Paragraph,
     Preformatted,
@@ -23,37 +22,21 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+import document_style as brand
 
 ROOT = Path(__file__).resolve().parents[1]
-NAVY = colors.HexColor("#142C46")
-BLUE = colors.HexColor("#1769B5")
-TEAL = colors.HexColor("#0E8A89")
-INK = colors.HexColor("#233449")
-MUTED = colors.HexColor("#5D6E80")
-PALE = colors.HexColor("#EEF4FA")
-BORDER = colors.HexColor("#D8E3ED")
+NAVY = colors.HexColor("#" + brand.NAVY)
+BLUE = colors.HexColor("#" + brand.BLUE)
+TEAL = colors.HexColor("#" + brand.CYAN)
+INK = colors.HexColor("#" + brand.INK)
+MUTED = colors.HexColor("#" + brand.MUTED)
+PALE = colors.HexColor("#" + brand.PALE)
+BORDER = colors.HexColor("#" + brand.LINE)
 WIDTH = A4[0] - 88
 
 
 def register_fonts(font_dir=None):
-    paths = [Path(font_dir)] if font_dir else []
-    paths += [
-        Path("/usr/share/fonts/truetype/dejavu"),
-        Path("/usr/share/fonts/dejavu-sans-fonts"),
-        Path("/opt/anaconda3/lib/python3.12/site-packages/matplotlib/mpl-data/fonts/ttf"),
-        Path("/Library/Fonts"),
-        Path.home() / "Library/Fonts",
-    ]
-    for path in paths:
-        filenames = ["DejaVuSans.ttf", "DejaVuSans-Bold.ttf", "DejaVuSansMono.ttf"]
-        if all((path / name).is_file() for name in filenames):
-            for name, filename in zip(["Report", "Report-Bold", "Report-Mono"], filenames):
-                pdfmetrics.registerFont(TTFont(name, str(path / filename)))
-            pdfmetrics.registerFontFamily(
-                "Report", normal="Report", bold="Report-Bold", italic="Report", boldItalic="Report-Bold"
-            )
-            return
-    raise SystemExit("Install DejaVu Sans or pass --font-dir with regular, bold and mono TTF files")
+    brand.register_fonts("Report", font_dir)
 
 
 def rich(text):
@@ -62,7 +45,7 @@ def rich(text):
     text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", text)
     text = re.sub(
         r'(?<![="\w])(https?://[^\s<>]+)',
-        lambda m: f'<link href="{m.group(1)}" color="#1769B5">{m.group(1)}</link>',
+        lambda m: f'<link href="{m.group(1)}" color="#{brand.BLUE}">{m.group(1)}</link>',
         text,
     )
     return text
@@ -121,7 +104,6 @@ class ResultTiles(Flowable):
 
 class PagedCanvas(canvas.Canvas):
     def __init__(self, *args, **kwargs):
-        self.report_date = kwargs.pop("report_date", "12.11.2026")
         super().__init__(*args, **kwargs)
         self.pages = []
 
@@ -138,7 +120,6 @@ class PagedCanvas(canvas.Canvas):
             self.line(44, 39, A4[0] - 44, 39)
             self.setFillColor(MUTED)
             self.setFont("Report", 7.5)
-            self.drawString(44, 24, f"OpenCaseKillers • Технический отчёт • {self.report_date}")
             self.drawRightString(A4[0] - 44, 24, f"{self._pageNumber} / {total}")
             super().showPage()
         super().save()
@@ -146,26 +127,17 @@ class PagedCanvas(canvas.Canvas):
 
 def header(c, doc):
     c.saveState()
-    if doc.page == 1:
-        c.setFillColor(NAVY)
-        c.rect(0, A4[1] - 16, A4[0], 16, fill=1, stroke=0)
-    else:
-        c.setFillColor(BLUE)
-        c.setFont("Report-Bold", 8)
-        c.drawString(44, A4[1] - 34, "OPENCASEKILLERS")
-        c.setFont("Report", 7.5)
-        c.setFillColor(MUTED)
-        c.drawRightString(A4[0] - 44, A4[1] - 34, "Устройство • Технологии • Запуск")
-        c.setStrokeColor(BORDER)
-        c.line(44, A4[1] - 43, A4[0] - 44, A4[1] - 43)
+    c.drawImage(str(brand.ASSETS / "logo.png"), A4[0] - 104, A4[1] - 42, 60, 29.4)
+    c.setFillColor(BLUE)
+    c.rect(44, A4[1] - 36, 27, 3, fill=1, stroke=0)
     c.restoreState()
 
 
 def styles():
     base = dict(
         fontName="Report",
-        fontSize=9.3,
-        leading=13.5,
+        fontSize=10.5,
+        leading=14.6,
         textColor=INK,
         spaceAfter=7,
         alignment=TA_LEFT,
@@ -197,8 +169,8 @@ def styles():
         "h3": ParagraphStyle(
             "h3",
             fontName="Report-Bold",
-            fontSize=10.7,
-            leading=15,
+            fontSize=12.4,
+            leading=16.2,
             textColor=BLUE,
             spaceBefore=8,
             spaceAfter=6,
@@ -207,20 +179,20 @@ def styles():
         "cell": ParagraphStyle(
             "cell",
             fontName="Report",
-            fontSize=8.1,
-            leading=11.1,
+            fontSize=9.4,
+            leading=12.6,
             textColor=INK,
             spaceAfter=0,
             splitLongWords=True,
         ),
         "thead": ParagraphStyle(
-            "thead", fontName="Report-Bold", fontSize=8.1, leading=11.1, textColor=colors.white, spaceAfter=0
+            "thead", fontName="Report-Bold", fontSize=9.4, leading=12.6, textColor=colors.white, spaceAfter=0
         ),
         "code": ParagraphStyle(
             "code",
             fontName="Report-Mono",
-            fontSize=7.3,
-            leading=10.6,
+            fontSize=8.4,
+            leading=11.7,
             textColor=NAVY,
             backColor=PALE,
             borderPadding=10,
@@ -251,8 +223,8 @@ def make_table(lines, st):
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 8),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                ("TOPPADDING", (0, 0), (-1, -1), 7),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
                 ("LINEBELOW", (0, 0), (-1, 0), 0.7, NAVY),
                 ("LINEBELOW", (0, 1), (-1, -1), 0.3, BORDER),
             ]
@@ -277,7 +249,7 @@ def parse_section(section, st, cover=False):
             if language == "mermaid":
                 story.extend([Spacer(1, 7), Pipeline(), ResultTiles(), Spacer(1, 14)])
             else:
-                longest = max((pdfmetrics.stringWidth(row, "Report-Mono", 7.3) for row in code), default=0)
+                longest = max((pdfmetrics.stringWidth(row, "Report-Mono", 8.4) for row in code), default=0)
                 if longest > WIDTH - 22:
                     raise ValueError(f"Code line exceeds PDF width: {longest:.1f} pt")
                 story.append(Preformatted("\n".join(code), st["code"]))
@@ -315,9 +287,8 @@ def parse_section(section, st, cover=False):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--font-dir", type=Path)
-    parser.add_argument("--date", default="2026-11-12", help="Report snapshot date, ISO format")
     parser.add_argument("--source", type=Path, default=ROOT / "docs/report_ru.md")
-    parser.add_argument("--output", type=Path, default=ROOT / "docs/OpenCaseKillers_Report_RU.pdf")
+    parser.add_argument("--output", type=Path, default=ROOT / "docs/Техническое_описание.pdf")
     args = parser.parse_args()
     register_fonts(args.font_dir)
     sections = args.source.read_text().split("\n---\n")
@@ -325,6 +296,8 @@ def main():
     for index, section in enumerate(sections):
         if index:
             story.append(PageBreak())
+        else:
+            story.append(Image(str(brand.ASSETS / "cover.png"), width=WIDTH, height=WIDTH * 234 / 479))
         story.extend(parse_section(section, st, cover=index == 0))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     doc = SimpleDocTemplate(
@@ -334,17 +307,13 @@ def main():
         rightMargin=44,
         topMargin=64,
         bottomMargin=54,
-        title="OpenCaseKillers — технический отчёт",
-        author="OpenCaseKillers",
+        title=brand.TITLE,
+        author="",
         subject="Архитектура, технологии и запуск аналитического ИИ-агента",
         pageCompression=1,
     )
-    date_label = date.fromisoformat(args.date).strftime("%d.%m.%Y")
-
-    def report_canvas(*canvas_args, **canvas_kwargs):
-        return PagedCanvas(*canvas_args, report_date=date_label, **canvas_kwargs)
-
-    doc.build(story, onFirstPage=header, onLaterPages=header, canvasmaker=report_canvas)
+    doc.build(story, onFirstPage=header, onLaterPages=header, canvasmaker=PagedCanvas)
+    brand.clean_pdf(args.output, brand.TITLE)
     print(
         f"PDF created: {args.output.relative_to(ROOT) if args.output.is_relative_to(ROOT) else args.output}"
     )

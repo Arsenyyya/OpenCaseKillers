@@ -110,11 +110,6 @@
     "source_models_backlog_http_path": "passed",
     "models": "finite synthetic fixture responses"
   },
-  "pdf": {
-    "pages": 13,
-    "visual_review": "passed",
-    "path": "docs/OpenCaseKillers_Report_RU.pdf"
-  },
   "github_actions": {
     "workflow": ".github/workflows/verify.yml",
     "note": "See live check for the published commit; this snapshot records local execution."
@@ -125,11 +120,5 @@
     "independent semantic evaluation",
     "real media/GPU load and 24-hour SLO",
     "corporate backup/restore and external security review"
-  ],
-  "materials": {
-    "technical_brief": "read",
-    "team_plan": "read",
-    "original_case_pdf": "iCloud timeout on 2026-11-12",
-    "review_pdf_and_photo": "not supplied"
-  }
+  ]
 }

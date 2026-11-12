@@ -10,13 +10,6 @@
   },
   "ruff": "passed",
   "uv_lock": "passed",
-  "pdf": {
-    "path": "docs/OpenCaseKillers_Report_RU.pdf",
-    "source": "docs/report_ru.md",
-    "pages": 13,
-    "cyrillic_fonts": "embedded DejaVu Sans",
-    "visual_review": "passed"
-  },
   "baseline_measurements_date": "2026-11-06",
   "not_run": [
     "real Qwen/ASR/VL evaluation",

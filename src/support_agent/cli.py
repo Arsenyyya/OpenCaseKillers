@@ -153,7 +153,7 @@ async def dispatch(args):
 
 def main():
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s %(message)s")
-    parser = argparse.ArgumentParser(description="OpenCaseKillers: bounded, auditable support analytics")
+    parser = argparse.ArgumentParser(description="Аналитика обращений: bounded, auditable support analytics")
     sub = parser.add_subparsers(dest="command", required=True)
     for name in (
         "migrate",

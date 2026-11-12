@@ -8,7 +8,7 @@ CACHE := .cache/uv
 	test lint format schemas schemas-check check wheel check-wheel report submission image docker-demo up stop logs
 
 help:
-	@echo "OpenCaseKillers — команды из корня проекта"
+	@echo "Аналитика обращений — команды из корня проекта"
 	@echo "  make demo         установить зависимости, поднять БД, пройти reviewed demo"
 	@echo "  make verify       чистая временная БД: restart, replay, update/delete"
 	@echo "  make api          локальный API под ограниченной DB-ролью"
@@ -18,8 +18,8 @@ help:
 	@echo "  make provision CONFIG=...  загрузить явную серверную конфигурацию"
 	@echo "  make docker-demo  собрать образ и пройти demo внутри Docker"
 	@echo "  make up / stop    запустить / остановить сервисы, сохранив данные"
-	@echo "  make report       собрать PDF-отчёт с DejaVu Sans"
-	@echo "  make submission   собрать комплект по правилам кейса: решение, метрики, слайды"
+	@echo "  make report       собрать техническое описание PDF"
+	@echo "  make submission   собрать решение, метрики и презентацию"
 
 $(PY):
 	$(PYTHON) -m venv .venv
@@ -86,6 +86,7 @@ report: install-docs
 	$(PY) scripts/build_report.py
 
 submission: install-docs
+	$(PY) scripts/build_report.py
 	$(PY) scripts/build_submission.py
 
 image: bootstrap

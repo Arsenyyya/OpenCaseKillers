@@ -26,7 +26,6 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
     Flowable,
@@ -37,42 +36,21 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+import document_style as brand
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "submission/source"
 FINAL = ROOT / "submission/final"
-NAVY, TEAL, ORANGE = "142C46", "087F8C", "E95D22"
-INK, MUTED, PALE, LINE = "24364B", "596B7C", "EFF5F8", "CFDCE5"
-WHITE, GREEN = "FFFFFF", "287957"
+NAVY, TEAL, ORANGE = brand.NAVY, brand.BLUE, brand.ORANGE
+INK, MUTED, PALE, LINE = brand.INK, brand.MUTED, brand.PALE, brand.LINE
+WHITE, GREEN = "FFFFFF", brand.BLUE
 FONT = "Arial"
 PAGE_WIDTH = A4[0] - 84
 
 
 def register_fonts():
     global FONT
-    candidates = [
-        (Path("/System/Library/Fonts/Supplemental"), "Arial.ttf", "Arial Bold.ttf", "Arial"),
-        (
-            Path("/usr/share/fonts/truetype/liberation2"),
-            "LiberationSans-Regular.ttf",
-            "LiberationSans-Bold.ttf",
-            "Liberation Sans",
-        ),
-        (
-            Path("/usr/share/fonts/truetype/dejavu"),
-            "DejaVuSans.ttf",
-            "DejaVuSans-Bold.ttf",
-            "DejaVu Sans",
-        ),
-    ]
-    for directory, regular, bold, name in candidates:
-        if (directory / regular).is_file() and (directory / bold).is_file():
-            pdfmetrics.registerFont(TTFont("Submission", str(directory / regular)))
-            pdfmetrics.registerFont(TTFont("Submission-Bold", str(directory / bold)))
-            pdfmetrics.registerFontFamily("Submission", normal="Submission", bold="Submission-Bold")
-            FONT = name
-            return
-    raise SystemExit("Install Arial, Liberation Sans or DejaVu Sans to build the submission")
+    FONT = brand.register_fonts()
 
 
 def color(value):
@@ -173,15 +151,12 @@ def build_solution_pdf(data):
 
     def page_frame(c, doc):
         c.setFillColor(color(NAVY))
-        c.rect(0, A4[1] - 9, A4[0], 9, fill=1, stroke=0)
-        c.setFont("Submission-Bold", 9)
-        c.drawString(42, A4[1] - 30, "OPENCASEKILLERS · INTELLIGENCE CUP")
+        c.rect(42, A4[1] - 36, 27, 3, fill=1, stroke=0)
+        c.drawImage(str(brand.ASSETS / "logo.png"), A4[0] - 101, A4[1] - 40, 59, 28.9)
         c.setFont("Submission", 9)
         c.setFillColor(color(MUTED))
-        c.drawRightString(A4[0] - 42, A4[1] - 30, data["date"])
         c.setStrokeColor(color(LINE))
         c.line(42, 34, A4[0] - 42, 34)
-        c.drawString(42, 21, "Основное решение · вопросы 1–4, 6")
         c.drawRightString(A4[0] - 42, 21, str(doc.page))
 
     doc = SimpleDocTemplate(
@@ -191,10 +166,11 @@ def build_solution_pdf(data):
         rightMargin=42,
         topMargin=47,
         bottomMargin=43,
-        title="OpenCaseKillers — решение кейса",
-        author="OpenCaseKillers",
+        title=brand.TITLE,
+        author="",
     )
     doc.build(story, onFirstPage=page_frame, onLaterPages=page_frame)
+    brand.clean_pdf(FINAL / "Решение.pdf", brand.TITLE)
 
 
 def shade(cell, fill):
@@ -210,6 +186,7 @@ def build_solution_docx(data):
     section.page_width, section.page_height = Cm(21), Cm(29.7)
     section.top_margin, section.bottom_margin = Cm(1.65), Cm(1.65)
     section.left_margin, section.right_margin = Cm(1.48), Cm(1.48)
+    section.header_distance = Cm(0.3)
     normal = doc.styles["Normal"]
     normal.font.name, normal.font.size = FONT, WordPt(12)
     normal.font.color.rgb = WordColor.from_string(INK)
@@ -221,12 +198,17 @@ def build_solution_docx(data):
     doc.styles["Heading 1"].font.size = WordPt(19)
     doc.styles["Heading 1"].paragraph_format.space_after = WordPt(10)
     header = section.header.paragraphs[0]
-    header.text = f"OPENCASEKILLERS · INTELLIGENCE CUP                            {data['date']}"
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    header.paragraph_format.space_before = WordPt(0)
+    header.paragraph_format.space_after = WordPt(0)
+    header.add_run().add_picture(str(brand.ASSETS / "logo.png"), width=Cm(2.08))
     header.style = doc.styles["Normal"]
     for run in header.runs:
         run.font.size = WordPt(9)
     footer = section.footer.paragraphs[0]
-    footer.text = "Основное решение · вопросы 1–4, 6                                        "
+    footer.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     field = OxmlElement("w:fldSimple")
     field.set(qn("w:instr"), "PAGE")
     footer._p.append(field)
@@ -280,9 +262,10 @@ def build_solution_docx(data):
                             for run in p.runs:
                                 run.font.size = WordPt(12)
                 doc.add_paragraph().paragraph_format.space_after = WordPt(0)
-    doc.core_properties.title = "OpenCaseKillers — решение кейса"
-    doc.core_properties.author = "OpenCaseKillers"
+    doc.core_properties.title = brand.TITLE
+    doc.core_properties.author = ""
     doc.save(FINAL / "Решение.docx")
+    brand.clean_office(FINAL / "Решение.docx")
 
 
 def wrap(text, width_pt, font, size):
@@ -307,14 +290,19 @@ class Deck:
     def __init__(self):
         self.pptx = Presentation()
         self.pptx.slide_width, self.pptx.slide_height = Inches(13.333), Inches(7.5)
-        self.pptx.core_properties.title = "OpenCaseKillers — Intelligence Cup"
-        self.pptx.core_properties.author = "OpenCaseKillers"
+        self.pptx.core_properties.title = brand.TITLE
+        self.pptx.core_properties.author = ""
         self.pdf = canvas.Canvas(str(FINAL / "Презентация.pdf"), pagesize=(960, 540))
-        self.pdf.setTitle("OpenCaseKillers — Intelligence Cup")
-        self.pdf.setAuthor("OpenCaseKillers")
+        self.pdf.setTitle(brand.TITLE)
+        self.pdf.setAuthor("")
         self.slides = []
         self.issues = []
         self.texts = []
+
+    def picture(self, name, x, y, w, h):
+        path = str(brand.ASSETS / name)
+        self.slide.shapes.add_picture(path, Inches(x), Inches(y), width=Inches(w), height=Inches(h))
+        self.pdf.drawImage(path, x * 72, 540 - (y + h) * 72, w * 72, h * 72)
 
     def rect(self, x, y, w, h, fill, radius=False, line=None):
         shape = self.slide.shapes.add_shape(
@@ -387,306 +375,242 @@ class Deck:
             self.pdf.showPage()
         self.slide = self.pptx.slides.add_slide(self.pptx.slide_layouts[6])
         self.slides.append(self.slide)
-        self.rect(0, 0, 13.333, 7.5, NAVY if dark else WHITE)
-        self.rect(0.5, 0.45, 0.08, 0.25, ORANGE)
-        self.text(0.7, 0.44, 10, 0.3, tag.upper(), size=12, fill="A7C6D9" if dark else TEAL, bold=True)
-        self.text(0.65, 1.0, 12, 0.9, title, size=32, fill=WHITE if dark else NAVY, bold=True)
+        self.rect(0, 0, 13.333, 7.5, WHITE)
+        if number == 1:
+            self.picture("cover.png", 0, 0, 13.333, 13.333 * 234 / 479)
+            self.picture("logo.png", 11.1, 6.45, 1.5, 1.5 * 568 / 1160)
+            return
+        self.text(0.65, 0.44, 10.9, 0.3, tag.upper(), size=12, fill=TEAL, bold=True)
+        self.text(12.0, 0.44, 0.65, 0.3, f"{number:02}", size=12, fill=MUTED, align="center")
+        self.text(0.65, 1.0, 12, 1.1, title, size=30, fill=NAVY, bold=True)
         if subtitle:
-            self.text(0.68, 1.91, 11.9, 0.55, subtitle, size=17, fill="C2D4E0" if dark else MUTED)
-        self.text(
-            0.65,
-            7.12,
-            10,
-            0.2,
-            "OpenCaseKillers  ·  Intelligence Cup  ·  13.11.2026",
-            size=10,
-            fill="A7C6D9" if dark else MUTED,
-        )
-        self.text(12.1, 7.1, 0.6, 0.25, f"{number:02}", size=11, fill="A7C6D9" if dark else MUTED)
+            self.text(0.68, 2.02, 11.9, 0.55, subtitle, size=17, fill=MUTED)
+        self.picture("logo.png", 11.8, 6.94, 0.8, 0.8 * 568 / 1160)
 
     def save(self):
         if self.issues:
             raise ValueError("\n".join(self.issues))
         self.pptx.save(FINAL / "Презентация.pptx")
         self.pdf.save()
+        brand.clean_office(FINAL / "Презентация.pptx")
+        brand.clean_pdf(FINAL / "Презентация.pdf", brand.TITLE)
 
 
 def build_deck():
     d = Deck()
-    d.start(
-        1,
-        "ИИ-агент для поддержки и продуктовых команд",
-        "Из обращений — в понятный backlog",
-        "Повторяющиеся потребности, подтверждённые источниками и человеком",
-        dark=True,
-    )
-    labels = ["Обращения", "Потребности", "Повторы", "Карточки", "Решение"]
-    for i, label in enumerate(labels):
-        x = 0.68 + i * 2.46
-        d.rect(x, 3.0, 2.13, 1.05, "23425E" if i < 4 else TEAL, radius=True)
-        d.text(x + 0.08, 3.35, 1.97, 0.45, label, size=20, fill=WHITE, bold=True, align="center")
-        if i < 4:
-            d.arrow(x + 2.14, 3.31, fill="A7C6D9")
-    for x, value, label in [
-        (0.7, "4", "границы сервисов"),
-        (4.8, "1", "внутренний контур"),
-        (8.9, "Человек", "принимает решение"),
-    ]:
-        d.text(x, 4.8, 3.7, 0.65, value, size=35, fill="63CDD0", bold=True)
-        d.text(x, 5.58, 3.7, 0.5, label, size=19, fill=WHITE)
-    d.text(
-        0.7,
-        6.45,
-        12,
-        0.35,
-        "Реализован локальный MVP. Корпоративный пилот и качество Qwen предстоит проверить.",
-        size=14,
-        fill="C2D4E0",
-    )
+    d.start(1, "", "")
+    d.text(7.8, 3.85, 4.85, 1.65, "ИИ-агент для анализа обращений", size=31, fill=NAVY, bold=True)
+    d.text(7.8, 5.57, 4.85, 0.85, "Повторяющиеся запросы — в продуктовые изменения", size=18, fill=INK)
 
     d.start(
         2,
-        "Бизнес-процесс",
-        "Повторы доходят до владельца продукта",
-        "Срочные инциденты остаются в штатном процессе поддержки",
+        "Как работает решение",
+        "От обращения до решения владельца продукта",
+        "Поддержка решает срочные проблемы, агент собирает повторяющиеся потребности",
     )
-    for y, title, labels, fill in [
-        (2.7, "СЕЙЧАС", ["Тикеты и звонки", "Ручная выгрузка", "Ручной анализ", "Передача команде"], MUTED),
+    for y, title, labels in [
+        (2.85, "СЕЙЧАС", ["Тикеты и звонки", "Ручная выгрузка", "Ручной анализ", "Передача команде"]),
         (
-            4.15,
+            4.25,
             "С АГЕНТОМ",
-            ["Изменения источника", "Распознавание + ИИ", "Частоты + цитаты", "Решение владельца"],
-            TEAL,
+            ["Изменения источника", "Распознавание и ИИ", "Частоты и цитаты", "Решение владельца"],
         ),
     ]:
-        d.text(0.7, y + 0.27, 1.4, 0.6, title, size=14, fill=fill, bold=True)
+        d.text(0.7, y + 0.27, 1.4, 0.6, title, size=14, fill=TEAL, bold=True)
         for i, label in enumerate(labels):
             x = 2.25 + 2.56 * i
-            d.rect(x, y, 2.25, 1.05, PALE, radius=True)
+            d.rect(x, y, 2.25, 1.05, PALE)
             d.text(x + 0.12, y + 0.2, 2.01, 0.7, label, size=19, align="center")
             if i < 3:
                 d.arrow(x + 2.25, y + 0.32)
     for x, value, label in [
-        (0.7, "≈40", "менеджеров — штат, не поток"),
-        (4.9, "1 год", "история в системе тикетов"),
-        (9.1, "≤5", "карточек за рабочий день"),
+        (0.7, "≈40", "менеджеров поддержки"),
+        (4.9, "1 год", "история обращений"),
+        (9.1, "до 5", "карточек за рабочий день"),
     ]:
-        d.text(x, 5.62, 3.6, 0.52, value, size=29, fill=TEAL, bold=True)
-        d.text(x, 6.23, 3.6, 0.52, label, size=16)
+        d.text(x, 5.75, 3.6, 0.52, value, size=29, fill=TEAL, bold=True)
+        d.text(x, 6.35, 3.6, 0.5, label, size=16)
 
     d.start(
         3,
-        "1 · Архитектура",
-        "Четыре границы, одна кодовая база",
-        "Внешние LLM и runtime API исключены условием кейса",
+        "Архитектура",
+        "Четыре сервиса с понятными границами",
+        "Все данные, модели и интеграции остаются во внутреннем контуре",
     )
     services = [
-        ("01", "ingest", "Тикеты, версии, курсор\nИзоляция сбоев источника"),
-        ("02", "media", "Текст, ASR и VL\nТяжёлые файлы отдельно"),
-        ("03", "analysis", "Потребности и группы\nБюджет model-вызовов"),
-        ("04", "delivery", "Карточка → reviewer\nOutbox → backlog"),
+        ("01", "Приём", "Тикеты и версии\nИзоляция сбоев источника"),
+        ("02", "Распознавание", "Текст, аудио и изображения\nТяжёлые файлы — в своей очереди"),
+        ("03", "Анализ", "Потребности и группы\nКонтроль числа вызовов моделей"),
+        ("04", "Передача", "Карточка и согласование\nНадёжная доставка в backlog"),
     ]
     for i, (number, title, text) in enumerate(services):
-        d.card(0.68 + i * 3.12, 2.65, 2.9, 2.75, number, title, text)
-    d.rect(0.7, 5.67, 7.3, 0.8, NAVY, radius=True)
+        d.card(0.68 + i * 3.12, 2.8, 2.9, 2.8, number, title, text)
+    d.rect(0.7, 5.86, 7.3, 0.72, NAVY)
     d.text(
         0.87,
-        5.87,
+        6.03,
         6.96,
-        0.5,
-        "PostgreSQL: данные + очередь + RLS + лимиты",
-        size=20,
+        0.4,
+        "PostgreSQL: данные, очередь, права, лимиты",
+        size=19,
         fill=WHITE,
         align="center",
     )
-    d.rect(8.25, 5.67, 4.35, 0.8, TEAL, radius=True)
-    d.text(8.4, 5.87, 4.05, 0.5, "Qwen 3.8 / ASR / VL", size=20, fill=WHITE, align="center")
-    d.text(
-        0.73,
-        6.66,
-        12,
-        0.3,
-        "Кеш, инкрементальный импорт и сохранённый extraction уменьшают повторную работу.",
-        size=14,
-        fill=MUTED,
-    )
+    d.rect(8.25, 5.86, 4.35, 0.72, TEAL)
+    d.text(8.4, 6.03, 4.05, 0.4, "Qwen 3.8 / ASR / VL", size=19, fill=WHITE, align="center")
 
     d.start(
         4,
-        "2 · Tools и доступ",
-        "Модель предлагает. Workflow проверяет.",
-        "Идентификаторы продукта и права берутся из доверенного контекста",
+        "Инструменты и доступ",
+        "Запись — только после решения человека",
+        "Модель анализирует текст; права и допустимые действия проверяет код",
     )
     tools = [
-        ("Читать", "list_ticket_changes · read_ticket_content"),
-        ("Найти", "find_similar_groups · read_product_context"),
-        ("Собрать", "build_digest: частоты вычисляет код"),
-        ("Согласовать", "record_product_decision: только reviewer"),
+        ("Получить", "Изменения и содержимое разрешённых тикетов"),
+        ("Найти", "Похожие группы, владельца и словарь продукта"),
+        ("Собрать", "Карточки с частотой, цитатами и динамикой"),
+        ("Согласовать", "Решение владельца и доставка в backlog"),
     ]
     for i, (title, label) in enumerate(tools):
-        y = 2.65 + i * 0.89
-        d.rect(0.7, y, 7.5, 0.72, PALE, radius=True)
+        y = 2.8 + i * 0.89
+        d.rect(0.7, y, 7.5, 0.72, PALE)
         d.text(0.88, y + 0.16, 1.75, 0.4, title, size=18, bold=True, fill=TEAL)
-        d.text(2.7, y + 0.17, 5.28, 0.4, label, size=15)
-    d.rect(8.55, 2.65, 4.05, 3.4, NAVY, radius=True)
-    d.text(8.8, 2.9, 3.55, 0.6, "Два уровня защиты", size=21, fill=WHITE, bold=True)
+        d.text(2.7, y + 0.17, 5.28, 0.4, label, size=16)
+    d.rect(8.55, 2.8, 4.05, 3.4, NAVY)
+    d.text(8.8, 3.07, 3.55, 0.6, "Два уровня защиты", size=21, fill=WHITE, bold=True)
     d.text(
         8.8,
-        3.8,
+        3.95,
         3.55,
         1.9,
-        "JWT + серверные grants + RLS\n\nМодель без write-tools; запись после решения человека",
+        "Проверяемые JWT, серверные роли и RLS\n\nУ модели нет инструментов записи и прав согласования",
         size=18,
         fill=WHITE,
     )
-    d.text(
-        0.74,
-        6.46,
-        11.8,
-        0.45,
-        "Обновление источника инвалидирует карточку; старое согласование не даёт права отправить новую версию.",
-        size=16,
-        fill=MUTED,
-    )
+    d.text(0.74, 6.52, 10.8, 0.4, "Карточка изменилась — требуется новое согласование.", size=17, fill=MUTED)
 
     d.start(
         5,
-        "3 · Промпт",
-        "Одна тема ещё не означает одну потребность",
-        "Недоверенный текст → строгий JSON → проверка цитат и разрешённых ID",
+        "Промпт",
+        "Пожелание и дефект — разные потребности",
+        "Общая тема не должна объединять запрос новой функции и поломку существующей",
     )
     for x, label, quote, outcome in [
-        (0.7, "ПОЖЕЛАНИЕ", "«Добавьте экспорт в CSV»", "feature_request\nНовая возможность"),
-        (6.85, "ДЕФЕКТ", "«Экспорт в CSV перестал работать»", "defect\nСуществующая функция сломана"),
+        (0.7, "ПОЖЕЛАНИЕ", "«Добавьте экспорт в CSV»", "Новая возможность"),
+        (6.85, "ДЕФЕКТ", "«Экспорт в CSV перестал работать»", "Существующая функция сломана"),
     ]:
-        d.rect(x, 2.7, 5.75, 2.2, PALE, radius=True)
-        d.text(x + 0.2, 2.89, 5.35, 0.35, label, size=13, fill=TEAL, bold=True)
-        d.text(x + 0.2, 3.38, 5.35, 0.8, quote, size=23, bold=True)
-        d.text(x + 0.2, 4.27, 5.35, 0.5, outcome.replace("\n", " · "), size=16)
-    d.rect(0.7, 5.17, 11.9, 1.27, NAVY, radius=True)
+        d.rect(x, 2.85, 5.75, 2.2, PALE)
+        d.text(x + 0.2, 3.04, 5.35, 0.35, label, size=13, fill=TEAL, bold=True)
+        d.text(x + 0.2, 3.53, 5.35, 0.8, quote, size=23, bold=True)
+        d.text(x + 0.2, 4.42, 5.35, 0.5, outcome, size=17)
+    d.rect(0.7, 5.32, 11.9, 1.18, NAVY)
     d.text(
         0.94,
-        5.37,
+        5.5,
         11.4,
-        0.9,
-        "Правила промпта: только переданные сегменты; 1–3 точные цитаты; смешанные запросы разделить; причины и выгоду не выдумывать; при сомнении — needs_review / uncertain.",
-        size=18,
+        0.85,
+        "Только переданные сегменты. От 1 до 3 точных цитат. Смешанные запросы разделяются; причины и выгода не выдумываются. Неясные случаи передаются человеку.",
+        size=19,
         fill=WHITE,
     )
-    d.text(
-        0.74,
-        6.65,
-        12,
-        0.3,
-        "Один повтор для исправления формата. Невалидный ответ не попадает в доставку.",
-        size=14,
-        fill=MUTED,
-    )
+    d.text(0.74, 6.65, 10.5, 0.3, "JSON и цитаты проверяются до формирования карточки.", size=15, fill=MUTED)
 
     d.start(
         6,
-        "Нагрузка · сценарий, не замер Qwen",
-        "Пиковый поток требует проверки capacity",
-        "1 000 обращений/сутки, пик ×3; 12 вызовов/тикет по 10 с — верхняя оценка",
+        "Нагрузка",
+        "Пиковый поток требует запаса мощности",
+        "Расчётный профиль: 1 000 обращений в сутки, пик ×3; до 12 вызовов по 10 секунд",
     )
     rows = [
         ("Обычный поток", 12000, TEAL),
         ("Пик ×3", 36000, ORANGE),
         ("Ёмкость: 2 слота", 17280, NAVY),
-        ("Ёмкость: 6 слотов", 51840, "607D94"),
+        ("Ёмкость: 6 слотов", 51840, brand.CYAN),
     ]
     for i, (label, value, fill) in enumerate(rows):
-        y = 2.75 + i * 0.76
+        y = 2.85 + i * 0.76
         d.text(0.73, y + 0.04, 3.1, 0.45, label, size=18)
         width = value / 51840 * 6.55
-        d.rect(3.85, y, width, 0.4, fill, radius=True)
+        d.rect(3.85, y, width, 0.4, fill)
         d.text(3.95 + width, y + 0.02, 1.65, 0.4, f"{value:,}".replace(",", " "), size=17, bold=True)
     d.text(
         0.75,
-        5.92,
+        6.02,
         11.8,
-        0.65,
-        "ASR: 1 000 мин/сутки × RTF 0,25 = 250 слот-минут. VL: 100 стр. × 3 с = 300 с. На пике — ×3. При 6 LLM-слотах загрузка пика ≈69%.",
+        0.7,
+        "При 6 слотах пиковая загрузка — около 69%. ASR: 1 000 минут аудио × 0,25 = 250 слот-минут. VL: 100 страниц × 3 секунды = 300 секунд. На пике — ×3.",
         size=17,
-    )
-    d.text(
-        0.75,
-        6.72,
-        11.8,
-        0.25,
-        "Проверено: очередь 3 000 заданий / 36,295 с. Это синтетический тест очереди, без реальных GPU и Qwen.",
-        size=12,
-        fill=MUTED,
     )
 
     d.start(
         7,
-        "4 · Тестирование и релиз",
-        "Локальный MVP проверен; впереди пилот",
-        "Фактические результаты отделены от условий корпоративной приёмки",
+        "Проверка и приёмка",
+        "От локальной проверки — к пилоту",
+        "Результаты тестов и критерии приёмки оцениваются отдельно",
     )
     gates = [
-        ("86 / 86", "Код и протокол", "Тесты прошли 12.11\nПовторы, RLS, TTL, HTTPS/JWT", GREEN),
-        ("≥90% / ≥80%", "Качество ИИ", "Precision / recall\nНезависимый gold ≥400 origin", MUTED),
-        ("≥95% / 24 ч", "Реальная нагрузка", "Полный охват новых данных\nРеальные модели и медиа", MUTED),
-        ("Приёмка", "Бизнес и ИБ", "Чистая экономия времени\nДоступ, backup и rollback", MUTED),
+        ("86 тестов", "Логика системы", "Повторы, права и удаление\nHTTPS и проверка JWT", TEAL),
+        ("90% / 80%", "Качество ИИ", "Точность / полнота\nНезависимая разметка ≥400 обращений", TEAL),
+        ("95% за 24 ч", "Скорость", "Полная обработка новых обращений\nРеальные модели и медиа", TEAL),
+        ("Приёмка", "Бизнес и ИБ", "Чистая экономия времени\nПроверка доступа и восстановления", TEAL),
     ]
     for i, (number, title, text, accent) in enumerate(gates):
-        d.card(0.68 + i * 3.12, 2.7, 2.9, 3.1, number, title, text, accent=accent)
+        d.card(0.68 + i * 3.12, 2.85, 2.9, 3.1, number, title, text, accent=accent)
     d.text(
         0.75,
-        6.16,
-        11.8,
+        6.25,
+        11.0,
         0.65,
-        "Demo: 40 синтетических тикетов → 6 карточек → 2 локальные доставки. Реальное качество Qwen, медиа-нагрузка и 24-часовой SLO ещё не измерены.",
+        "Демонстрация: 40 синтетических обращений → 6 карточек → 2 доставки. Качество Qwen и работа на реальном потоке проверяются на пилоте.",
         size=18,
         fill=MUTED,
     )
 
     d.start(
         8,
-        "5 · Метрики",
-        "Меньше ручной работы — при сохранении качества",
-        "Основной эффект: часы baseline минус вся работа после внедрения, включая review",
+        "Метрики",
+        "Главный эффект — меньше ручной работы",
+        "Считаем всё время людей: анализ, проверку карточек, исправления и согласование",
     )
-    metrics = [
-        ("Время", "часы на 1 000 origin\nи на аналитический цикл"),
-        ("Качество", "precision / recall\nчистота групп + цитаты"),
-        ("Полнота", "complete / принятые\nохват источника — отдельно"),
-        ("Передача", "задержка от 2-го origin\nдо карточки и решения"),
-    ]
-    for i, (title, text) in enumerate(metrics):
+    for i, (title, text) in enumerate(
+        [
+            ("Время", "Часы на 1 000 обращений\nи на цикл аналитики"),
+            ("Качество", "Точность и полнота\nГруппировка и цитаты"),
+            ("Охват", "Полная обработка /\nпринятые обращения"),
+            ("Передача", "Время от повтора запроса\nдо карточки и решения"),
+        ]
+    ):
         x = 0.7 + 3.12 * i
-        d.rect(x, 2.7, 2.9, 1.73, PALE, radius=True)
-        d.text(x + 0.15, 2.91, 2.6, 0.4, title, size=22, fill=TEAL, bold=True)
-        d.text(x + 0.15, 3.5, 2.6, 0.8, text, size=16)
-    d.rect(0.7, 4.85, 5.68, 0.78, NAVY, radius=True)
-    d.text(0.86, 5.03, 5.36, 0.4, "4 недели: замер ручного процесса", size=19, fill=WHITE, align="center")
-    d.arrow(6.4, 5.06, 0.4)
-    d.rect(6.85, 4.85, 5.75, 0.78, TEAL, radius=True)
-    d.text(7.0, 5.03, 5.45, 0.4, "4 недели: shadow / пилот", size=19, fill=WHITE, align="center")
+        d.rect(x, 2.85, 2.9, 1.73, PALE)
+        d.text(x + 0.15, 3.06, 2.6, 0.4, title, size=22, fill=TEAL, bold=True)
+        d.text(x + 0.15, 3.65, 2.6, 0.8, text, size=16)
+    d.rect(0.7, 5.0, 5.68, 0.78, NAVY)
+    d.text(0.86, 5.18, 5.36, 0.4, "4 недели: ручной процесс", size=19, fill=WHITE, align="center")
+    d.arrow(6.4, 5.21, 0.4)
+    d.rect(6.85, 5.0, 5.75, 0.78, TEAL)
+    d.text(7.0, 5.18, 5.45, 0.4, "4 недели: пилот с агентом", size=19, fill=WHITE, align="center")
     d.text(
         0.75,
-        5.99,
-        11.8,
-        0.82,
-        "Ретроспектива — из годовой истории и журналов. Нет времени в логах → хронометраж; нет разметки → качество не измерено; нет source count → охват источника неизвестен. Контрольная группа помогает отделить эффект агента.",
+        6.1,
+        11.0,
+        0.8,
+        "Исходные показатели — из истории тикетов и журналов. При нехватке данных используем хронометраж и независимую разметку. Эффект оцениваем относительно контрольной группы.",
         size=17,
     )
 
     d.start(
         9,
-        "6 · Финансовая модель",
-        "Потолок вложений на 3 года: сценарии",
-        "Высвобождённые часы становятся денежным эффектом только после подтверждения реализации",
+        "Финансовая эффективность",
+        "Сколько можно вложить с возвратом за 3 года",
+        "Три сценария экономии времени; денежный эффект подтверждает владелец бюджета",
     )
     for i, (label, value, fill) in enumerate(
-        [("Сдержанный", 154125, "9FB6C8"), ("Базовый", 1042912.5, TEAL), ("Высокий", 2766543.75, ORANGE)]
+        [("Сдержанный", 154125, brand.CYAN), ("Базовый", 1042912.5, TEAL), ("Высокий", 2766543.75, ORANGE)]
     ):
-        y = 2.65 + i * 0.87
+        y = 2.8 + i * 0.87
         d.text(0.75, y + 0.06, 2.2, 0.4, label, size=18)
         width = value / 2766543.75 * 5.5
-        d.rect(3.0, y, width, 0.43, fill, radius=True)
+        d.rect(3.0, y, width, 0.43, fill)
         d.text(
             3.15 + width,
             y + 0.02,
@@ -696,71 +620,60 @@ def build_deck():
             size=18,
             bold=True,
         )
-    d.rect(10.2, 2.65, 2.4, 2.38, PALE, radius=True)
-    d.text(10.39, 2.88, 2.02, 0.65, "69,6 ч/мес.", size=25, fill=TEAL, bold=True)
-    d.text(10.39, 3.7, 2.02, 1.07, "База: 584 640 руб./год\nu = 70%", size=18)
+    d.rect(10.2, 2.8, 2.4, 2.38, PALE)
+    d.text(10.39, 3.03, 2.02, 0.65, "69,6 ч/мес.", size=25, fill=TEAL, bold=True)
+    d.text(10.39, 3.85, 2.02, 1.07, "Базовый эффект:\n584 640 руб./год", size=18)
     d.text(
         0.76,
-        5.36,
+        5.5,
         11.8,
-        0.69,
-        "Imax = Σ Bt/(1+r)^t; B1=0,5E, B2=1,05E, B3=1,05²E; r=20%. При условных I0=800 тыс. руб. базовый NPV=243 тыс. руб.; дисконтированный возврат — до конца 3-го года.",
+        0.7,
+        "Imax = Σ Bt/(1+r)^t; B1=0,5E, B2=1,05E, B3=1,05²E; r=20%. При вложении 800 тыс. руб. базовый NPV — 243 тыс. руб.; дисконтированный возврат — до конца 3-го года.",
         size=18,
     )
     d.text(
         0.76,
-        6.23,
-        11.8,
-        0.44,
-        "Все входы — допущения. ЦБ: ставка 14%, инфляция 6,4% за сентябрь; r=20% и рост 5% — сценарии команды.",
-        size=14,
-        fill=MUTED,
-    )
-    d.text(
-        0.76,
-        6.79,
-        11.8,
-        0.2,
-        "Источник макроданных: Банк России, https://www.cbr.ru/dkp/ · проверено 13.11.2026",
-        size=10,
+        6.35,
+        10.8,
+        0.45,
+        "Параметры сценарные: ставка дисконтирования 20%, индексация эффекта 5% в год.",
+        size=15,
         fill=MUTED,
     )
 
     d.start(
         10,
-        "Решение о внедрении",
-        "Сначала подтвердить эффект на пилоте",
-        "Масштабирование — после качества, мощности, безопасности и финансовой приёмки",
-        dark=True,
+        "Внедрение",
+        "Пилот подтвердит выбор и бюджет",
+        "Решение принимается по качеству, доступной мощности и экономическому эффекту",
     )
     for i, (title, text) in enumerate(
         [
-            ("Измерить", "Поток и ручной baseline\nQwen / ASR / VL на gold"),
-            ("Сопоставить", "Ручной процесс и правила\nСтоимость капитала"),
-            ("Принять", "Бюджет ≤ Imax\nВладелец продукта + ИБ"),
+            ("Измерить", "Поток и ручные трудозатраты\nКачество Qwen, ASR и VL"),
+            ("Сравнить", "Агент, SQL и правила\nСтоимость капитала"),
+            ("Согласовать", "Бюджет в пределах Imax\nВладелец продукта и ИБ"),
         ]
     ):
         x = 0.7 + i * 4.18
-        d.rect(x, 2.8, 3.95, 2.05, "23425E", radius=True)
-        d.text(x + 0.2, 3.05, 3.55, 0.5, title, size=24, fill="63CDD0", bold=True)
-        d.text(x + 0.2, 3.83, 3.55, 0.8, text, size=18, fill=WHITE)
+        d.rect(x, 2.85, 3.95, 2.05, PALE)
+        d.text(x + 0.2, 3.1, 3.55, 0.5, title, size=24, fill=TEAL, bold=True)
+        d.text(x + 0.2, 3.88, 3.55, 0.8, text, size=18)
     d.text(
         0.76,
-        5.23,
+        5.32,
         11.8,
-        0.98,
-        "Если SQL/правила дают 40% эффекта, их потолок — 417 тыс. руб. Максимальная доплата за агента — 626 тыс. руб. при тех же сценарных входах. Фактический выбор — по подтверждённому NPV.",
+        1.0,
+        "Если SQL и правила дают 40% эффекта агента, их потолок вложений — 417 тыс. руб. Дополнительные вложения в агента оправданы в пределах 626 тыс. руб. при тех же параметрах. Выбираем вариант с наибольшим подтверждённым NPV.",
         size=19,
-        fill=WHITE,
     )
     d.text(
         0.76,
-        6.36,
-        11.8,
-        0.43,
-        "Нет подтверждённой монетизации часов → показываем часы, денежный эффект = 0.",
-        size=17,
-        fill="A7C6D9",
+        6.58,
+        10.8,
+        0.35,
+        "Без подтверждённого денежного эффекта оцениваем только высвобождённые часы.",
+        size=16,
+        fill=MUTED,
     )
     d.save()
     return d
@@ -817,14 +730,15 @@ def validate(data, deck):
     assert len([p for p in doc.paragraphs if p.style.name == "Heading 1"]) == 5
     assert [page["title"][0] for page in data["pages"]] == ["1", "2", "3", "4", "6"]
     main_texts = "\n".join(body + deck.texts)
-    urls = re.findall(r"https?://[^\s)]+", main_texts)
+    urls = [url.rstrip(".,;") for url in re.findall(r"https?://[^\s)]+", main_texts)]
     assert all(url == "https://www.cbr.ru/dkp/" for url in urls), urls
     metrics = (FINAL / "Метрики.md").read_text(encoding="utf-8")
     assert metrics.startswith("# 5.")
+    visible = "\n".join([main_texts, metrics, pdf_text]).lower()
+    retired_name = "open" + "case" + "killers"
+    assert retired_name not in visible
+    assert not re.search(r"\b\d{1,2}\.\d{1,2}\.\d{4}\b|\b20\d{2}\b", visible)
     result = {
-        "date": "2026-11-13",
-        "case_pages": 7,
-        "source": "User-supplied original PDF, read directly; source PDF not published",
         "solution": {
             "body_characters_with_spaces": count_body,
             "conservative_characters_with_spaces": conservative,
@@ -838,14 +752,14 @@ def validate(data, deck):
         "presentation": {"slides": 10, "formats": ["pptx", "pdf"], "native_editable_shapes": True},
         "external_links_in_solution_and_slides": sorted(set(urls)),
         "finance": {"status": "assumptions, not observed company effects", "scenarios": finance_snapshot()},
-        "visual_review": "Visual review recorded separately in Соответствие_кейсу.md; repeat after content changes",
         "not_verified": [
             "Company model quality, real media throughput and 24-hour SLO",
             "Company baseline, realized monetary effect and approved investment budget",
             "Organizer upload rules beyond the supplied PDF; oral defense readiness",
         ],
     }
-    (ROOT / "submission/checks.json").write_text(
+    (ROOT / ".local").mkdir(exist_ok=True)
+    (ROOT / ".local/submission-checks.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -860,13 +774,17 @@ def main():
     build_solution_docx(data)
     deck = build_deck()
     validate(data, deck)
-    archive = ROOT / "submission/OpenCaseKillers_submission.zip"
+    archive = ROOT / "submission/Материалы.zip"
     with ZipFile(archive, "w", compression=ZIP_DEFLATED) as package:
-        for name in ["Решение.pdf", "Метрики.md", "Презентация.pptx"]:
-            package.write(FINAL / name, arcname=name)
+        for path in sorted(FINAL.iterdir()):
+            if path.is_file():
+                package.write(path, arcname=path.name)
+        report = ROOT / "docs/Техническое_описание.pdf"
+        if report.is_file():
+            package.write(report, arcname=report.name)
     with ZipFile(archive) as package:
         assert package.testzip() is None
-        assert len(package.namelist()) == 3
+        assert len(package.namelist()) == 6
 
 
 if __name__ == "__main__":
