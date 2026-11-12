@@ -5,7 +5,7 @@ AGENT := .venv/bin/support-agent
 CACHE := .cache/uv
 
 .PHONY: help install install-docs bootstrap db migrate provision doctor demo verify api \
-	test lint format schemas schemas-check check wheel check-wheel report image docker-demo up stop logs
+	test lint format schemas schemas-check check wheel check-wheel report submission image docker-demo up stop logs
 
 help:
 	@echo "OpenCaseKillers — команды из корня проекта"
@@ -19,6 +19,7 @@ help:
 	@echo "  make docker-demo  собрать образ и пройти demo внутри Docker"
 	@echo "  make up / stop    запустить / остановить сервисы, сохранив данные"
 	@echo "  make report       собрать PDF-отчёт с DejaVu Sans"
+	@echo "  make submission   собрать комплект по правилам кейса: решение, метрики, слайды"
 
 $(PY):
 	$(PYTHON) -m venv .venv
@@ -83,6 +84,9 @@ check-wheel: wheel
 
 report: install-docs
 	$(PY) scripts/build_report.py
+
+submission: install-docs
+	$(PY) scripts/build_submission.py
 
 image: bootstrap
 	sh scripts/build-image.sh

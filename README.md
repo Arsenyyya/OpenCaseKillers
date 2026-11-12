@@ -10,6 +10,12 @@
 
 [PDF-отчёт](docs/OpenCaseKillers_Report_RU.pdf) · [Документация](docs/README.md) · [Состояние требований](docs/readiness.md) · [Результаты проверок](docs/validation.md)
 
+## Материалы по правилам кейса
+
+После прямого чтения исходного PDF подготовлен [отдельный комплект](submission/README.md): **[основное решение](submission/final/Решение.pdf)** (5 страниц, до 15 000 символов), **[метрики .md](submission/final/Метрики.md)** и **[презентация](submission/final/Презентация.pptx)** (10 слайдов; [PDF](submission/final/Презентация.pdf)). [Архив трёх обязательных частей](submission/OpenCaseKillers_submission.zip).
+
+[Какие правила на каких страницах и как они выполнены](submission/Соответствие_кейсу.md) · [Проверенные счётчики](submission/checks.json). Финансы содержат явно обозначенные сценарии; качество реальной Qwen и бизнес-эффект предстоит измерить. Прежний технический отчёт от 12 ноября описывает backend и не заменяет конкурсное решение.
+
 ## Быстрый старт
 
 Нужны Python 3.12+, Docker с Compose и `make`. Из корня проекта:
@@ -43,6 +49,7 @@ OpenAPI: **http://127.0.0.1:8000/docs**. В другом терминале мо
 | Запустить / остановить сервисы, сохранив данные | `make up` / `make stop` |
 | Пересоздать JSON Schema и OpenAPI | `make schemas` |
 | Собрать PDF | `make report` |
+| Собрать решение, метрики и презентацию по кейсу | `make submission` |
 | Проверить окружение, миграции, registry и capacity | `make doctor` |
 
 Для полного Docker-пути сначала выполните `make docker-demo`, затем `make up`. Привилегированные `migrate`/`bootstrap` отделены от runtime; API и workers не получают admin URL/пароль владельца БД. [Docker и подробные команды](docs/quickstart.md#docker).
@@ -64,6 +71,7 @@ fixtures/demo/          синтетические обращения, меди�
 tests/                  unit, integration, e2e и packaging
 scripts/ deploy/        проверки, сборка, PDF и развёртывание
 docs/                   сценарии работы, архитектура, контракты и ограничения
+submission/             решение по кейсу, метрики, презентация и сверка правил
 ```
 
 Python-пакет называется `support-insight-agent`, CLI — `support-agent`. Wheel содержит runtime-ресурсы, prompts, demo и миграции и работает вне исходного репозитория. Docker устанавливает такой же non-editable wheel.
